@@ -1,0 +1,424 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "jaredzhou/pony"
+
+import {
+  "jaredzhou/libs/url",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/http",
+  "moonbitlang/async/io",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "tonyfettes/any",
+}
+
+// Values
+pub let aborted : Int
+
+pub let already_exists : Int
+
+pub let cancelled : Int
+
+pub fn canonicalHeaderKey(String) -> String
+
+pub let data_loss : Int
+
+pub let deadline_exceeded : Int
+
+pub let default_max_memory : Int64
+
+pub let failed_precondition : Int
+
+pub let internal : Int
+
+pub let invalid_argument : Int
+
+pub fn new() -> Header
+
+pub let not_found : Int
+
+pub let ok : Int
+
+pub let out_of_range : Int
+
+pub let permission_denied : Int
+
+pub fn register(Int, Int) -> Unit
+
+pub let resource_exhausted : Int
+
+pub async fn start(String, Router) -> Unit
+
+pub let status_accepted : Int
+
+pub let status_already_reported : Int
+
+pub let status_bad_gateway : Int
+
+pub let status_bad_request : Int
+
+pub let status_conflict : Int
+
+pub let status_continue : Int
+
+pub let status_created : Int
+
+pub let status_early_hints : Int
+
+pub let status_expectation_failed : Int
+
+pub let status_failed_dependency : Int
+
+pub let status_forbidden : Int
+
+pub let status_found : Int
+
+pub let status_gateway_timeout : Int
+
+pub let status_gone : Int
+
+pub let status_http_version_not_supported : Int
+
+pub let status_im_used : Int
+
+pub let status_insufficient_storage : Int
+
+pub let status_internal_server_error : Int
+
+pub let status_length_required : Int
+
+pub let status_locked : Int
+
+pub let status_loop_detected : Int
+
+pub let status_method_not_allowed : Int
+
+pub let status_misdirected_request : Int
+
+pub let status_moved_permanently : Int
+
+pub let status_multi_status : Int
+
+pub let status_multiple_choices : Int
+
+pub let status_network_authentication_required : Int
+
+pub let status_no_content : Int
+
+pub let status_non_authoritative_info : Int
+
+pub let status_not_acceptable : Int
+
+pub let status_not_extended : Int
+
+pub let status_not_found : Int
+
+pub let status_not_implemented : Int
+
+pub let status_not_modified : Int
+
+pub let status_ok : Int
+
+pub let status_partial_content : Int
+
+pub let status_payment_required : Int
+
+pub let status_permanent_redirect : Int
+
+pub let status_precondition_failed : Int
+
+pub let status_precondition_required : Int
+
+pub let status_processing : Int
+
+pub let status_proxy_auth_required : Int
+
+pub let status_request_entity_too_large : Int
+
+pub let status_request_header_fields_too_large : Int
+
+pub let status_request_timeout : Int
+
+pub let status_request_uri_too_long : Int
+
+pub let status_requested_range_not_satisfiable : Int
+
+pub let status_reset_content : Int
+
+pub let status_see_other : Int
+
+pub let status_service_unavailable : Int
+
+pub let status_switching_protocols : Int
+
+pub let status_temporary_redirect : Int
+
+pub fn status_text(Int) -> String
+
+pub let status_too_early : Int
+
+pub let status_too_many_requests : Int
+
+pub let status_unauthorized : Int
+
+pub let status_unavailable_for_legal_reasons : Int
+
+pub let status_unprocessable_entity : Int
+
+pub let status_unsupported_media_type : Int
+
+pub let status_upgrade_required : Int
+
+pub let status_use_proxy : Int
+
+pub let status_variant_also_negotiates : Int
+
+pub fn to_api_error(PonyError) -> ApiError
+
+pub let unauthenticated : Int
+
+pub let unavailable : Int
+
+pub let unimplemented : Int
+
+pub let unknown : Int
+
+// Errors
+pub(all) suberror ExtError {
+  Missing
+  DecodeError(key~ : String, msg~ : String)
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) suberror MultipartError {
+  MissingBoundary
+  MissingName
+  MalformedBody(String)
+  FileTooLarge(String, Int64)
+  FileIOError(String)
+} derive(@debug.Debug)
+
+pub(all) suberror PonyError {
+  MissingParam(String)
+  MissingQuery(String)
+  MissingForm(String)
+  MissingHeader(String)
+  MissingExt(String)
+  ExtDecodeError(String, String)
+  MissingFormFile(String)
+  InvalidArgument(String)
+  NotFound(String)
+  PermissionDenied(String)
+} derive(ToJson, @debug.Debug)
+pub impl ToApiError for PonyError
+
+pub suberror RouterError {
+  InvalidPattern(http_method~ : String, path~ : String, reason~ : String)
+} derive(ToJson, @debug.Debug)
+pub impl Show for RouterError
+
+// Types and methods
+pub(all) struct ApiError {
+  code : Int
+  message : String
+  details : Array[Map[String, String]]?
+} derive(ToJson, @debug.Debug)
+pub fn ApiError::new(Int, String) -> Self
+pub fn ApiError::to_http_status(Int) -> Int
+pub impl ToApiError for ApiError
+
+pub(all) struct Context {
+  http_method : HttpMethod
+  url_str : String
+  url : @url.URL
+  mut route_path : String
+  req_headers : HttpHeaders
+  resp_headers : HttpHeaders
+  queries : Values
+  mut form_values : Values?
+  mut multipart_form : MultipartForm?
+  exts : ExtStore
+  mut path_params : Array[ParamKV]
+  req_body : &@io.Reader
+  resp_writer : @http.ServerConnection
+}
+pub async fn Context::cleanup(Self) -> Unit
+pub async fn Context::form(Self, String) -> String raise PonyError
+pub fn Context::form_file(Self, String) -> FileHeader raise PonyError
+pub fn Context::form_files(Self, String) -> Array[FileHeader]
+pub fn[K, V] Context::get_ext(Self, K) -> V raise PonyError
+pub fn Context::header(Self, String) -> String raise PonyError
+pub async fn[T : @json.FromJson] Context::json(Self) -> T
+pub async fn Context::no_content(Self) -> Unit
+pub fn Context::param(Self, String) -> String raise PonyError
+pub async fn Context::parse_multipart_form(Self, max_memory? : Int64, writers? : Map[String, FileWriter]) -> Unit
+pub fn Context::query(Self, String) -> String raise PonyError
+pub async fn Context::redirect(Self, String, http_status? : Int, msg? : String) -> Unit
+pub fn[K] Context::remove_ext(Self, K) -> Unit
+pub async fn[T : ToApiError] Context::reply_error(Self, T) -> Unit
+pub async fn[T : ToJson] Context::reply_ok(Self, T) -> Unit
+pub fn Context::set_content_type(Self, String) -> Unit
+pub fn[K, V] Context::set_ext(Self, K, V) -> Unit
+pub fn Context::set_header(Self, String, String) -> Unit
+pub async fn Context::try_form(Self, String) -> String?
+pub fn Context::try_form_file(Self, String) -> FileHeader?
+pub fn[K, V] Context::try_get_ext(Self, K) -> V?
+pub fn Context::try_header(Self, String) -> String?
+pub fn Context::try_param(Self, String) -> String?
+pub fn Context::try_query(Self, String) -> String?
+pub fn Context::try_wildcard(Self) -> String?
+pub fn Context::wildcard(Self) -> String raise PonyError
+pub async fn Context::write_bytes(Self, Int, msg? : String, Bytes) -> Unit
+pub async fn[T : ToJson] Context::write_json(Self, Int, msg? : String, T) -> Unit
+pub async fn Context::write_text(Self, Int, msg? : String, String) -> Unit
+pub impl Show for Context
+
+type Endpoint derive(@debug.Debug)
+
+pub(all) struct ExtStore(Array[(String, @any.Any)])
+pub fn[K, V] ExtStore::get(Self, K) -> V raise ExtError
+pub fn ExtStore::new() -> Self
+pub fn[K] ExtStore::remove(Self, K) -> Unit
+pub fn[K, V] ExtStore::set(Self, K, V) -> Unit
+pub fn[K, V] ExtStore::try_get(Self, K) -> V?
+
+type FileBackend
+
+pub(all) struct FileHeader {
+  filename : String
+  size : Int64
+  content_type : String?
+  header : PartHeaders
+  mut backend : FileBackend
+}
+pub async fn FileHeader::bytes(Self) -> Bytes
+pub async fn FileHeader::open(Self) -> @io.MemoryReader
+pub fn FileHeader::path(Self) -> String?
+
+pub(all) struct FileWriter(@fs.File)
+
+pub(all) struct Handler(async (Context) -> Unit) derive(@debug.Debug)
+
+pub struct Header(Map[String, Array[String]])
+pub fn Header::add(Self, String, String) -> Unit
+pub fn Header::copy(Self) -> Self
+pub fn Header::del(Self, String) -> Unit
+pub fn Header::get(Self, String) -> String?
+pub fn Header::has(Self, String) -> Bool
+pub fn Header::set(Self, String, String) -> Unit
+pub fn Header::values(Self, String) -> Array[String]
+
+pub(all) struct HttpHeaders(Map[String, String])
+pub fn HttpHeaders::from_map(Map[String, String]) -> Self
+pub fn HttpHeaders::get(Self, String) -> String?
+pub fn HttpHeaders::merge_in_place(Self, Map[String, String]) -> Unit
+pub fn HttpHeaders::new() -> Self
+pub fn HttpHeaders::set(Self, String, String) -> Unit
+pub fn HttpHeaders::to_map(Self) -> Map[String, String]
+
+pub(all) enum HttpMethod {
+  Get
+  Head
+  Post
+  Put
+  Delete
+  Connect
+  Options
+  Trace
+  Patch
+  Any
+} derive(Compare, Eq, Hash, ToJson, @debug.Debug)
+pub fn HttpMethod::from_std(@http.RequestMethod) -> Self
+pub impl Show for HttpMethod
+
+pub(all) struct Middleware((Handler) -> Handler) derive(@debug.Debug)
+
+type MultipartForm
+
+type Node derive(@debug.Debug)
+pub impl Show for Node
+
+type NodeType derive(@debug.Debug)
+pub impl Show for NodeType
+
+type ParamKV
+
+pub(all) struct Part {
+  source : &@io.Reader
+  delimiter : Bytes
+  headers : PartHeaders
+  mut buf : @buffer.Buffer
+  mut body_eof : Bool
+}
+pub fn Part::content_type(Self) -> String?
+pub fn Part::form_name(Self) -> (String, String?)
+pub fn Part::headers(Self) -> PartHeaders
+
+pub(all) struct PartHeaders(Map[String, String])
+pub fn PartHeaders::get(Self, String) -> String?
+pub fn PartHeaders::has(Self, String) -> Bool
+pub fn PartHeaders::is_empty(Self) -> Bool
+pub fn PartHeaders::new() -> Self
+
+pub(all) struct RequestId {
+}
+
+pub enum RouteResult {
+  Found(Endpoint, Array[String])
+  MethodNotAllowed
+  NotFound
+}
+
+pub struct Router {
+  tree : Node
+  middlewares : Array[Middleware]
+  mut not_found_handler : Handler?
+  mut method_not_allowed_handler : Handler?
+} derive(@debug.Debug)
+pub fn Router::Router() -> Self
+pub fn Router::add(Self, HttpMethod, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
+pub fn Router::any(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
+pub fn Router::build_ctx(Self, @http.Request, &@io.Reader, @http.ServerConnection) -> Context
+pub async fn Router::handle(Self, @http.Request, &@io.Reader, @http.ServerConnection) -> Unit
+pub async fn Router::handler(Self, Context) -> Unit
+pub fn Router::mount(Self, String, Self) -> Unit raise RouterError
+pub fn Router::set_method_not_allowed(Self, Handler) -> Unit
+pub fn Router::set_not_found(Self, Handler) -> Unit
+pub fn Router::use_mw(Self, Middleware) -> Unit
+pub impl Show for Router
+
+pub struct Server {
+  router : Router
+  addr : String
+  read_timeout : Int?
+  write_timeout : Int?
+  mut request_id : Int
+}
+pub fn Server::Server(String, Router) -> Self
+pub async fn Server::start(Self) -> Unit
+pub fn Server::with_timeout(Self, read? : Int, write? : Int) -> Self
+
+pub(all) struct UserId {
+}
+
+pub(all) struct Values(Map[String, Array[String]])
+pub fn Values::get(Self, String) -> String?
+pub fn Values::get_all(Self, String) -> Array[String]
+pub fn Values::new() -> Self
+
+// Type aliases
+
+// Traits
+pub trait Closer {
+  fn close(Self) -> Unit
+}
+
+pub trait ReaderCloser : @io.Reader + Closer {
+}
+
+pub(open) trait ToApiError {
+  fn to_api_error(Self) -> ApiError
+}
+
+pub trait WriterCloser : @io.Writer + Closer {
+}
+
