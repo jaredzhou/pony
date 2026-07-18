@@ -5,11 +5,11 @@ This is a [MoonBit](https://docs.moonbitlang.com) project.
 ## Project Structure
 
 - MoonBit packages are organized per directory, for each directory, there is a
-  `moon.pkg.json` file listing its dependencies. Each package has its files and
+  `moon.pkg` file listing its dependencies. Each package has its files and
   blackbox test files (common, ending in `_test.mbt`) and whitebox test files
   (ending in `_wbtest.mbt`).
 
-- In the toplevel directory, this is a `moon.mod.json` file listing about the
+- In the toplevel directory, this is a `moon.mod` file listing about the
   module and some meta information.
 
 ## Coding convention
@@ -23,29 +23,20 @@ This is a [MoonBit](https://docs.moonbitlang.com) project.
 
 ## Tooling
 
-- `moon fmt` is used to format your code properly.
+After making changes, run these steps in order. CI enforces the same
+checks on every push to main and on every PR (`.github/workflows/ci.yml`):
 
-- `moon info` is used to update the generated interface of the package, each
-  package has a generated interface file `.mbti`, it is a brief formal
-  description of the package. If nothing in `.mbti` changes, this means your
-  change does not bring the visible changes to the external package users, it is
-  typically a safe refactoring.
+- `moon check --deny-warn` — type-check with warnings treated as errors.
+- `moon fmt` — format the code. CI runs `moon fmt --check`, so make sure
+  it produces no diff.
+- `moon info` — regenerate `.mbti` interface files. CI checks
+  `git diff --exit-code` immediately afterwards, so commit any `.mbti`
+  changes. If `.mbti` is unchanged, the change is a safe refactoring
+  that does not affect the public API.
+- `moon test` — run the full test suite. Use `moon test --update` when
+  snapshots have changed.
 
-- In the last step, run `moon info && moon fmt` to update the interface and
-  format the code. Check the diffs of `.mbti` file to see if the changes are
-  expected.
-
-- Run `moon test` to check the test is passed. MoonBit supports snapshot
-  testing, so when your changes indeed change the behavior of the code, you
-  should run `moon test --update` to update the snapshot.
-
-- You can run `moon check` to check the code is linted correctly.
-
-- When writing tests, you are encouraged to use `inspect` and run
-  `moon test --update` to update the snapshots, only use assertions like
-  `assert_eq` when you are in some loops where each snapshot may vary. You can
-  use `moon coverage analyze > uncovered.log` to see which parts of your code
-  are not covered by tests.
-
-- agent-todo.md has some small tasks that are easy for AI to pick up, agent is
-  welcome to finish the tasks and check the box when you are done
+When writing tests, prefer `inspect` + `moon test --update` for
+snapshots; use `assert_eq` only when inside loops where each snapshot
+value varies. Run `moon coverage analyze > uncovered.log` to see which
+parts of your code are not covered by tests.
