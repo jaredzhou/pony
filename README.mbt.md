@@ -5,7 +5,8 @@ A lightweight HTTP web framework for MoonBit, inspired by Go's [Chi](https://git
 ## Installation
 
 ```bash
-moon add jaredzhou/pony
+moon add jaredzhou/pony        # latest
+moon add jaredzhou/pony@0.3.0  # pin version
 ```
 
 A complete example project is available at **[moon-examples/todo](https://github.com/jaredzhou/moon-examples/tree/main/todo)**.
