@@ -14,7 +14,8 @@ pub impl Show for RouterError with fn to_string(self) {
 ///|
 /// Unified error type for context accessor methods.
 /// Raised by `param`, `query`, `form`, `header`, `form_file`,
-/// `get_ext`, and `wildcard` when the requested value is missing.
+/// `get_ext`, and `wildcard` when the requested value is missing,
+/// or (`InvalidValue`) when it cannot be parsed into the requested type.
 /// Also used for generic request-level errors in handlers.
 pub(all) suberror PonyError {
   MissingParam(String)
@@ -24,6 +25,7 @@ pub(all) suberror PonyError {
   MissingExt(String)
   ExtDecodeError(String, String)
   MissingFormFile(String)
+  InvalidValue(String, String)
   InvalidArgument(String)
   NotFound(String)
   PermissionDenied(String)
@@ -46,6 +48,8 @@ pub impl ToApiError for PonyError with fn to_api_error(self : PonyError) -> ApiE
       ApiError::new(internal, "extension decode error: \{key} - \{msg}")
     PonyError::MissingFormFile(key) =>
       ApiError::new(invalid_argument, "missing form file: \{key}")
+    PonyError::InvalidValue(key, value) =>
+      ApiError::new(invalid_argument, "invalid value for \{key}: \{value}")
     PonyError::InvalidArgument(msg) => ApiError::new(invalid_argument, msg)
     PonyError::NotFound(msg) => ApiError::new(not_found, msg)
     PonyError::PermissionDenied(msg) => ApiError::new(permission_denied, msg)
@@ -313,9 +317,15 @@ pub fn Context::try_param(self : Context, name : String) -> String? {
 }
 
 ///|
-pub fn Context::param(self : Context, name : String) -> String raise PonyError {
+pub fn[T : FromStr] Context::param(
+  self : Context,
+  name : String,
+) -> T raise PonyError {
   match self.try_param(name) {
-    Some(v) => v
+    Some(v) =>
+      T::from_str(v) catch {
+        _ => raise PonyError::InvalidValue(name, v)
+      }
     None => raise PonyError::MissingParam(name)
   }
 }
@@ -336,9 +346,15 @@ pub fn Context::try_query(self : Context, key : String) -> String? {
 }
 
 ///|
-pub fn Context::query(self : Context, key : String) -> String raise PonyError {
-  match self.queries.get(key) {
-    Some(v) => v
+pub fn[T : FromStr] Context::query(
+  self : Context,
+  key : String,
+) -> T raise PonyError {
+  match self.try_query(key) {
+    Some(v) =>
+      T::from_str(v) catch {
+        _ => raise PonyError::InvalidValue(key, v)
+      }
     None => raise PonyError::MissingQuery(key)
   }
 }
@@ -358,12 +374,15 @@ pub async fn Context::try_form(self : Context, key : String) -> String? {
 }
 
 ///|
-pub async fn Context::form(
+pub async fn[T : FromStr] Context::form(
   self : Context,
   key : String,
-) -> String raise PonyError {
+) -> T raise PonyError {
   match (self.try_form(key) catch { _ => None }) {
-    Some(v) => v
+    Some(v) =>
+      T::from_str(v) catch {
+        _ => raise PonyError::InvalidValue(key, v)
+      }
     None => raise PonyError::MissingForm(key)
   }
 }
@@ -435,9 +454,15 @@ pub fn Context::try_header(self : Context, key : String) -> String? {
 }
 
 ///|
-pub fn Context::header(self : Context, key : String) -> String raise PonyError {
-  match self.req_headers.get(key) {
-    Some(v) => v
+pub fn[T : FromStr] Context::header(
+  self : Context,
+  key : String,
+) -> T raise PonyError {
+  match self.try_header(key) {
+    Some(v) =>
+      T::from_str(v) catch {
+        _ => raise PonyError::InvalidValue(key, v)
+      }
     None => raise PonyError::MissingHeader(key)
   }
 }

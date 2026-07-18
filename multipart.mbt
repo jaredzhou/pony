@@ -22,10 +22,10 @@
 //   // Raises MultipartError if the body is malformed or missing a boundary.
 //   ctx.parse_multipart_form(max_memory=64 * 1024 * 1024)!  // 64 MiB
 //
-//   // Step 2 — read regular form fields via ctx.form().
-//   // After parsing, form() bridges to the multipart fields automatically.
-//   let username = ctx.form("username").unwrap_or("anonymous")
-//   let title    = ctx.form("title").unwrap_or("")
+//   // Step 2 — read regular form fields via ctx.try_form().
+//   // After parsing, try_form() bridges to the multipart fields automatically.
+//   let username = ctx.try_form("username").unwrap_or("anonymous")
+//   let title    = ctx.try_form("title").unwrap_or("")
 //
 //   // Step 3 — access uploaded files.
 //   match ctx.form_file("avatar") {

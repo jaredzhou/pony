@@ -205,6 +205,7 @@ pub(all) suberror PonyError {
   MissingExt(String)
   ExtDecodeError(String, String)
   MissingFormFile(String)
+  InvalidValue(String, String)
   InvalidArgument(String)
   NotFound(String)
   PermissionDenied(String)
@@ -242,16 +243,16 @@ pub(all) struct Context {
   resp_writer : @http.ServerConnection
 }
 pub async fn Context::cleanup(Self) -> Unit
-pub async fn Context::form(Self, String) -> String raise PonyError
+pub async fn[T : FromStr] Context::form(Self, String) -> T raise PonyError
 pub fn Context::form_file(Self, String) -> FileHeader raise PonyError
 pub fn Context::form_files(Self, String) -> Array[FileHeader]
 pub fn[K, V] Context::get_ext(Self, K) -> V raise PonyError
-pub fn Context::header(Self, String) -> String raise PonyError
+pub fn[T : FromStr] Context::header(Self, String) -> T raise PonyError
 pub async fn[T : @json.FromJson] Context::json(Self) -> T
 pub async fn Context::no_content(Self) -> Unit
-pub fn Context::param(Self, String) -> String raise PonyError
+pub fn[T : FromStr] Context::param(Self, String) -> T raise PonyError
 pub async fn Context::parse_multipart_form(Self, max_memory? : Int64, writers? : Map[String, FileWriter]) -> Unit
-pub fn Context::query(Self, String) -> String raise PonyError
+pub fn[T : FromStr] Context::query(Self, String) -> T raise PonyError
 pub async fn Context::redirect(Self, String, http_status? : Int, msg? : String) -> Unit
 pub fn[K] Context::remove_ext(Self, K) -> Unit
 pub async fn[T : ToApiError] Context::reply_error(Self, T) -> Unit
@@ -411,6 +412,17 @@ pub fn Values::new() -> Self
 pub trait Closer {
   fn close(Self) -> Unit
 }
+
+pub(open) trait FromStr {
+  fn from_str(String) -> Self raise
+}
+pub impl FromStr for Bool
+pub impl FromStr for Int
+pub impl FromStr for Int64
+pub impl FromStr for UInt
+pub impl FromStr for UInt64
+pub impl FromStr for Double
+pub impl FromStr for String
 
 pub trait ReaderCloser : @io.Reader + Closer {
 }

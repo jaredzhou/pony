@@ -105,11 +105,11 @@ server.start()!
 
 Every accessor comes in two forms: a raising version and a `try_` variant that returns `Option`.
 
-Raising methods produce `PonyError` — catch and pass directly to `reply_error`:
+Raising versions are generic over the `@pony.FromStr` trait — annotate the target type and the value is parsed for you. A missing key raises `MissingParam`/`MissingQuery`/`MissingHeader`/`MissingForm`; a present value that fails to parse raises `InvalidValue` (mapped to HTTP 400). Catch and pass directly to `reply_error`:
 
 ```moonbit nocheck
 ///|
-let id = ctx.param("id") catch {
+let id : Int = ctx.param("id") catch {
   e => {
     ctx.reply_error(e)
     return
@@ -117,15 +117,33 @@ let id = ctx.param("id") catch {
 }
 
 ///|
-let token = ctx.header("Authorization") catch {
+let token : String = ctx.header("Authorization") catch {
   e => {
     ctx.reply_error(e)
     return
   }
 }
+
+///|
+let page : Int = ctx.query("page") catch { _ => 1 }
 ```
 
-Use the `try_` variant when a default fallback makes sense:
+Built-in `FromStr` impls: `String` (identity), `Int`, `Int64`, `UInt`, `UInt64`, `Double`, `Bool`. Implement it for your own types to use them with the typed accessors:
+
+```moonbit nocheck
+///|
+struct UserId(Int)
+
+///|
+pub impl @pony.FromStr for UserId with fn from_str(s) {
+  UserId(@pony.FromStr::from_str(s))
+}
+
+///|
+let uid : UserId = ctx.param("id") catch { ... }
+```
+
+Use the `try_` variant when a default fallback makes sense — it always returns the raw `String?`:
 
 ```moonbit nocheck
 ///|
@@ -170,13 +188,13 @@ ctx.redirect("/login")                                             // 302
 ctx.no_content()                                                   // 204
 ```
 
-| Raising version | Option version | Description |
+| Raising version (`T : FromStr`) | Option version (`String?`) | Description |
 |---|---|---|
 | `ctx.param("id")` | `ctx.try_param("id")` | Path parameter |
 | `ctx.query("q")` | `ctx.try_query("q")` | Query string value |
 | `ctx.header("Accept")` | `ctx.try_header("Accept")` | Request header |
 | `ctx.form("name")` | `ctx.try_form("name")` | Form field (async) |
-| `ctx.wildcard()` | `ctx.try_wildcard()` | Wildcard path capture |
+| `ctx.wildcard()` | `ctx.try_wildcard()` | Wildcard path capture (`String`) |
 | `ctx.json[T]()` | — | JSON body deserialization |
 | `ctx.form_file("file")` | `ctx.try_form_file("file")` | Uploaded file header |
 
@@ -345,7 +363,7 @@ r.add(HttpMethod::Post, "/upload", async ctx => {
 | Method | Returns | Description |
 |---|---|---|
 | `ctx.parse_multipart_form()` | `Unit` | Parse multipart body (call before accessing files/fields) |
-| `ctx.form("key")` | `String raise PonyError` | Form field value (use `try_form` for `Option`) |
+| `ctx.form("key")` | `T raise PonyError` | Form field value, parsed via `FromStr` (use `try_form` for raw `String?`) |
 | `ctx.form_file("key")` | `FileHeader raise PonyError` | Single uploaded file (use `try_form_file` for `Option`) |
 | `ctx.form_files("key")` | `Array[FileHeader]` | All files for a multi-file field |
 | `file.bytes()` | `Bytes` | Read full file content |

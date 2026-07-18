@@ -704,3 +704,91 @@ async test "test_multipart_upload_custom_writer" {
     }
   }
 }
+
+///|
+/// Local type used to exercise a user-defined FromStr impl
+/// (trait is foreign, type is local — allowed by coherence rules).
+struct ItemId(Int)
+
+///|
+impl @pony.FromStr for ItemId with fn from_str(s) {
+  ItemId(@pony.FromStr::from_str(s))
+}
+
+///|
+/// Typed accessors: param/query/header parsed via FromStr,
+/// parse failure -> InvalidValue -> HTTP 400, custom impl.
+async test "test_typed_accessors" {
+  let r = Router::Router()
+  r.add(
+    HttpMethod::Get,
+    "/item/{id}",
+    ctx => {
+      let id : Int = ctx.param("id") catch {
+        e => {
+          ctx.reply_error(e)
+          return
+        }
+      }
+      ctx.write_text(200, "item #\{id}")
+    },
+    name="item",
+  )
+  r.add(
+    HttpMethod::Get,
+    "/typed",
+    ctx => {
+      let page : Int = ctx.query("page") catch { _ => 1 }
+      let dbg : Bool = ctx.query("debug") catch { _ => false }
+      let ver : Double = ctx.header("x-api-version") catch { _ => 0.0 }
+      ctx.write_text(200, "page=\{page} debug=\{dbg} ver=\{ver}")
+    },
+    name="typed",
+  )
+  r.add(
+    HttpMethod::Get,
+    "/item2/{id}",
+    ctx => {
+      let iid : ItemId = ctx.param("id") catch {
+        e => {
+          ctx.reply_error(e)
+          return
+        }
+      }
+      let ItemId(n) = iid
+      ctx.write_text(200, "item2 #\{n}")
+    },
+    name="item2",
+  )
+
+  @async.with_task_group() <| group => {
+    let port = 19903
+    group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
+      start("127.0.0.1:\{port}", r)
+    }
+    let base = "http://127.0.0.1:\{port}"
+    @async.sleep(500)
+
+    // Int param parses
+    let (resp, body) = @http.get(base + "/item/42")
+    assert_eq(resp.code, 200)
+    assert_eq(body.text(), "item #42")
+
+    // unparsable param -> InvalidValue -> 400
+    let (resp, body) = @http.get(base + "/item/abc")
+    assert_eq(resp.code, 400)
+    assert_true(body.text().contains("invalid value for id: abc"))
+
+    // typed query + typed header
+    let (resp, body) = @http.get(base + "/typed?page=3&debug=true", headers={
+      "x-api-version": "1.5",
+    })
+    assert_eq(resp.code, 200)
+    assert_eq(body.text(), "page=3 debug=true ver=1.5")
+
+    // user-defined FromStr impl
+    let (resp, body) = @http.get(base + "/item2/7")
+    assert_eq(resp.code, 200)
+    assert_eq(body.text(), "item2 #7")
+  }
+}
