@@ -8,6 +8,8 @@ A lightweight HTTP web framework for MoonBit, inspired by Go's [Chi](https://git
 moon add jaredzhou/pony
 ```
 
+A complete example project is available at **[moon-examples/todo](https://github.com/jaredzhou/moon-examples/tree/main/todo)**.
+
 ## Quick Start
 
 ```moonbit nocheck
