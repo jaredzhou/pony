@@ -12,11 +12,12 @@ pub impl Show for RouterError with fn to_string(self) {
 }
 
 ///|
-/// Unified error type for context accessor methods.
-/// Raised by `param`, `query`, `form`, `header`, `form_file`,
-/// `get_ext`, and `wildcard` when the requested value is missing,
-/// or (`InvalidValue`) when it cannot be parsed into the requested type.
-/// Also used for generic request-level errors in handlers.
+/// Errors raised by the framework itself, from the context accessor
+/// methods (`param`, `query`, `form`, `header`, `form_file`, `get_ext`,
+/// `wildcard`) when a value is missing or cannot be parsed into the
+/// requested type. Business errors are not part of `PonyError` — construct
+/// an `ApiError` directly with one of its convenience constructors, e.g.
+/// `ApiError::not_found(msg)`.
 pub(all) suberror PonyError {
   MissingParam(String)
   MissingQuery(String)
@@ -26,9 +27,6 @@ pub(all) suberror PonyError {
   ExtDecodeError(String, String)
   MissingFormFile(String)
   InvalidValue(String, String)
-  InvalidArgument(String)
-  NotFound(String)
-  PermissionDenied(String)
 } derive(Debug, ToJson)
 
 ///|
@@ -50,9 +48,6 @@ pub impl ToApiError for PonyError with fn to_api_error(self : PonyError) -> ApiE
       ApiError::new(invalid_argument, "missing form file: \{key}")
     PonyError::InvalidValue(key, value) =>
       ApiError::new(invalid_argument, "invalid value for \{key}: \{value}")
-    PonyError::InvalidArgument(msg) => ApiError::new(invalid_argument, msg)
-    PonyError::NotFound(msg) => ApiError::new(not_found, msg)
-    PonyError::PermissionDenied(msg) => ApiError::new(permission_denied, msg)
   }
 }
 

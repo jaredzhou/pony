@@ -62,6 +62,90 @@ pub fn ApiError::new(code : Int, message : String) -> ApiError {
 }
 
 ///|
+/// Convenience constructors for the 16 canonical `ApiError` codes.
+/// Each one is equivalent to `ApiError::new(<code>, msg)` with the code
+/// baked in, so the code cannot be mistyped. For custom codes, keep using
+/// `ApiError::new` together with `register`.
+pub fn ApiError::cancelled(msg : String) -> ApiError {
+  ApiError::new(cancelled, msg)
+}
+
+///|
+pub fn ApiError::unknown(msg : String) -> ApiError {
+  ApiError::new(unknown, msg)
+}
+
+///|
+pub fn ApiError::invalid_argument(msg : String) -> ApiError {
+  ApiError::new(invalid_argument, msg)
+}
+
+///|
+pub fn ApiError::deadline_exceeded(msg : String) -> ApiError {
+  ApiError::new(deadline_exceeded, msg)
+}
+
+///|
+pub fn ApiError::not_found(msg : String) -> ApiError {
+  ApiError::new(not_found, msg)
+}
+
+///|
+pub fn ApiError::already_exists(msg : String) -> ApiError {
+  ApiError::new(already_exists, msg)
+}
+
+///|
+pub fn ApiError::permission_denied(msg : String) -> ApiError {
+  ApiError::new(permission_denied, msg)
+}
+
+///|
+pub fn ApiError::resource_exhausted(msg : String) -> ApiError {
+  ApiError::new(resource_exhausted, msg)
+}
+
+///|
+pub fn ApiError::failed_precondition(msg : String) -> ApiError {
+  ApiError::new(failed_precondition, msg)
+}
+
+///|
+pub fn ApiError::aborted(msg : String) -> ApiError {
+  ApiError::new(aborted, msg)
+}
+
+///|
+pub fn ApiError::out_of_range(msg : String) -> ApiError {
+  ApiError::new(out_of_range, msg)
+}
+
+///|
+pub fn ApiError::unimplemented(msg : String) -> ApiError {
+  ApiError::new(unimplemented, msg)
+}
+
+///|
+pub fn ApiError::internal(msg : String) -> ApiError {
+  ApiError::new(internal, msg)
+}
+
+///|
+pub fn ApiError::unavailable(msg : String) -> ApiError {
+  ApiError::new(unavailable, msg)
+}
+
+///|
+pub fn ApiError::data_loss(msg : String) -> ApiError {
+  ApiError::new(data_loss, msg)
+}
+
+///|
+pub fn ApiError::unauthenticated(msg : String) -> ApiError {
+  ApiError::new(unauthenticated, msg)
+}
+
+///|
 let codes : Map[Int, Int] = Map([])
 
 ///|

@@ -206,9 +206,6 @@ pub(all) suberror PonyError {
   ExtDecodeError(String, String)
   MissingFormFile(String)
   InvalidValue(String, String)
-  InvalidArgument(String)
-  NotFound(String)
-  PermissionDenied(String)
 } derive(ToJson, @debug.Debug)
 pub impl ToApiError for PonyError
 
@@ -223,8 +220,24 @@ pub(all) struct ApiError {
   message : String
   details : Array[Map[String, String]]?
 } derive(ToJson, @debug.Debug)
+pub fn ApiError::aborted(String) -> Self
+pub fn ApiError::already_exists(String) -> Self
+pub fn ApiError::cancelled(String) -> Self
+pub fn ApiError::data_loss(String) -> Self
+pub fn ApiError::deadline_exceeded(String) -> Self
+pub fn ApiError::failed_precondition(String) -> Self
+pub fn ApiError::internal(String) -> Self
+pub fn ApiError::invalid_argument(String) -> Self
 pub fn ApiError::new(Int, String) -> Self
+pub fn ApiError::not_found(String) -> Self
+pub fn ApiError::out_of_range(String) -> Self
+pub fn ApiError::permission_denied(String) -> Self
+pub fn ApiError::resource_exhausted(String) -> Self
 pub fn ApiError::to_http_status(Int) -> Int
+pub fn ApiError::unauthenticated(String) -> Self
+pub fn ApiError::unavailable(String) -> Self
+pub fn ApiError::unimplemented(String) -> Self
+pub fn ApiError::unknown(String) -> Self
 pub impl ToApiError for ApiError
 
 pub(all) struct Context {

@@ -72,10 +72,10 @@ r.mount("/api/v1", api)
 
 // Custom 404 / 405 handlers
 r.set_not_found(ctx => {
-  ctx.reply_error(ApiError::new(not_found, "page not found"))
+  ctx.reply_error(ApiError::not_found("page not found"))
 })
 r.set_method_not_allowed(ctx => {
-  ctx.reply_error(ApiError::new(method_not_allowed, "method not allowed"))
+  ctx.write_json(status_method_not_allowed, { "error": "method not allowed" })
 })
 ```
 
@@ -171,7 +171,7 @@ struct LoginReq {
 ///|
 let req : LoginReq = ctx.json() catch {
   _ => {
-    ctx.reply_error(PonyError::InvalidArgument("invalid JSON body"))
+    ctx.reply_error(ApiError::invalid_argument("invalid JSON body"))
     return
   }
 }
@@ -184,9 +184,9 @@ ctx.set_content_type("application/json")
 ctx.write_text(status_ok, "Hello")
 ctx.write_json(status_ok, {"key": "value"})
 ctx.reply_ok({"status": "ok"})                                  // 200 JSON
-ctx.reply_error(PonyError::InvalidArgument("bad input"))         // 400 JSON
-ctx.reply_error(PonyError::NotFound("not found"))               // 404 JSON
-ctx.reply_error(ApiError::new(invalid_argument, "bad input"))   // direct ApiError
+ctx.reply_error(ApiError::invalid_argument("bad input"))        // 400 JSON
+ctx.reply_error(ApiError::not_found("not found"))               // 404 JSON
+ctx.reply_error(ApiError::permission_denied("not allowed"))     // 403 JSON
 ctx.redirect("/login")                                             // 302
 ctx.no_content()                                                   // 204
 ```
@@ -219,7 +219,7 @@ fn auth_middleware(next : Handler) -> Handler {
     match ctx.try_header("X-User-Id") {
       Some(user_id) => ctx.set_ext(UserId{}, user_id)
       None => {
-        ctx.reply_error(ApiError::new(unauthenticated, "missing X-User-Id header"))
+        ctx.reply_error(ApiError::unauthenticated("missing X-User-Id header"))
         return
       }
     }
@@ -288,7 +288,7 @@ r.use_mw(@mw.jwt(new_hmac_sha256(secret)))
 
 ### Error handling
 
-`PonyError` is the unified error type for context accessors. It implements `ToApiError`, so you can pass it directly to `reply_error`:
+`PonyError` covers only errors raised by the framework itself — the context accessors. It implements `ToApiError`, so you can pass it directly to `reply_error`:
 
 ```moonbit nocheck
 ///|
@@ -300,18 +300,16 @@ pub suberror PonyError {
   MissingExt(String)
   ExtDecodeError(String, String)
   MissingFormFile(String)
-  InvalidArgument(String) // generic 400
-  NotFound(String) // generic 404
-  PermissionDenied(String) // generic 403
+  InvalidValue(String, String)
 }
 ```
 
-For non-context errors, construct a `PonyError` variant and pass directly to `reply_error`:
+For business errors, construct an `ApiError` directly with one of the 16 convenience constructors — one per canonical error code (`cancelled`, `unknown`, `invalid_argument`, `deadline_exceeded`, `not_found`, `already_exists`, `permission_denied`, `resource_exhausted`, `failed_precondition`, `aborted`, `out_of_range`, `unimplemented`, `internal`, `unavailable`, `data_loss`, `unauthenticated`):
 
 ```moonbit nocheck
-ctx.reply_error(PonyError::InvalidArgument("invalid id"))
-ctx.reply_error(PonyError::NotFound("list not found"))
-ctx.reply_error(PonyError::PermissionDenied("access denied"))
+ctx.reply_error(ApiError::invalid_argument("invalid id"))
+ctx.reply_error(ApiError::not_found("list not found"))
+ctx.reply_error(ApiError::permission_denied("access denied"))
 ```
 
 **Custom error types** — implement `ToApiError` for your own error types:
@@ -320,8 +318,8 @@ ctx.reply_error(PonyError::PermissionDenied("access denied"))
 ///|
 pub impl @pony.ToApiError for MyError with fn to_api_error(self : MyError) -> @pony.ApiError {
   match self {
-    MyError::NotFound(m) => @pony.ApiError::new(@pony.not_found, m)
-    MyError::Forbidden(m) => @pony.ApiError::new(@pony.permission_denied, m)
+    MyError::NotFound(m) => @pony.ApiError::not_found(m)
+    MyError::Forbidden(m) => @pony.ApiError::permission_denied(m)
   }
 }
 

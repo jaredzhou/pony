@@ -168,6 +168,74 @@ async test "test_pony" {
 }
 
 ///|
+/// The 16 convenience constructors bake in the canonical code and message,
+/// default to no details, and map to the expected HTTP status.
+test "api_error_helpers" {
+  let cases = [
+    (cancelled, fn(m : String) -> ApiError { ApiError::cancelled(m) }, 499),
+    (unknown, fn(m : String) -> ApiError { ApiError::unknown(m) }, 500),
+    (
+      invalid_argument,
+      fn(m : String) -> ApiError { ApiError::invalid_argument(m) },
+      400,
+    ),
+    (
+      deadline_exceeded,
+      fn(m : String) -> ApiError { ApiError::deadline_exceeded(m) },
+      504,
+    ),
+    (not_found, fn(m : String) -> ApiError { ApiError::not_found(m) }, 404),
+    (
+      already_exists,
+      fn(m : String) -> ApiError { ApiError::already_exists(m) },
+      409,
+    ),
+    (
+      permission_denied,
+      fn(m : String) -> ApiError { ApiError::permission_denied(m) },
+      403,
+    ),
+    (
+      resource_exhausted,
+      fn(m : String) -> ApiError { ApiError::resource_exhausted(m) },
+      429,
+    ),
+    (
+      failed_precondition,
+      fn(m : String) -> ApiError { ApiError::failed_precondition(m) },
+      400,
+    ),
+    (aborted, fn(m : String) -> ApiError { ApiError::aborted(m) }, 409),
+    (
+      out_of_range,
+      fn(m : String) -> ApiError { ApiError::out_of_range(m) },
+      400,
+    ),
+    (
+      unimplemented,
+      fn(m : String) -> ApiError { ApiError::unimplemented(m) },
+      501,
+    ),
+    (internal, fn(m : String) -> ApiError { ApiError::internal(m) }, 500),
+    (unavailable, fn(m : String) -> ApiError { ApiError::unavailable(m) }, 503),
+    (data_loss, fn(m : String) -> ApiError { ApiError::data_loss(m) }, 500),
+    (
+      unauthenticated,
+      fn(m : String) -> ApiError { ApiError::unauthenticated(m) },
+      401,
+    ),
+  ]
+  for i in 0..<cases.length() {
+    let (code, mk, http_status) = cases[i]
+    let e = mk("boom")
+    assert_eq(e.code, code)
+    assert_eq(e.message, "boom")
+    assert_true(e.details is None)
+    assert_eq(ApiError::to_http_status(e.code), http_status)
+  }
+}
+
+///|
 /// query parameter: key with value, key without value, multi-value key.
 async test "test_query" {
   let r = Router::Router()
