@@ -20,4 +20,3 @@ pub fn logger() -> @pony.Middleware
 // Type aliases
 
 // Traits
-

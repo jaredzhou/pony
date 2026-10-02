@@ -9,6 +9,9 @@ enum NodeType {
 } derive(Debug)
 
 ///|
+pub extend NodeType with @debug.Debug::{to_repr}
+
+///|
 fn NodeType::prefix(self : NodeType) -> String {
   match self {
     Static(s) => s
@@ -27,12 +30,18 @@ pub impl Show for NodeType with fn to_string(self : NodeType) -> String {
 }
 
 ///|
+pub extend NodeType with Show::{to_string, output}
+
+///|
 struct Endpoint {
   name : String
   handler : Handler
   pattern : String
   path_params : Array[String]
 } derive(Debug)
+
+///|
+pub extend Endpoint with @debug.Debug::{to_repr}
 
 ///|
 fn Endpoint::to_paramKV_array(
@@ -52,8 +61,11 @@ struct Node {
 } derive(Debug)
 
 ///|
+pub extend Node with @debug.Debug::{to_repr}
+
+///|
 pub impl Show for Node with fn to_string(self : Node) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   fn render(node : Node, indent : String, is_last : Bool, prefix : String) {
     sb.write_string(indent)
     sb.write_string(prefix)
@@ -102,6 +114,9 @@ pub impl Show for Node with fn to_string(self : Node) -> String {
   render(self, "", true, "")
   sb.to_string()
 }
+
+///|
+pub extend Node with Show::{to_string, output}
 
 ///|
 fn Node::get_handler(self : Node, meth : HttpMethod) -> Endpoint? {
@@ -346,6 +361,6 @@ fn Node::set_endpoint(
   handler : Handler,
   path_params : Array[String],
 ) -> Unit {
-  let ep = Endpoint::{ name, handler, pattern, path_params }
+  let ep = Endpoint::{ name, handler, pattern, path_params, }
   self.endpoints.set(http_method, ep)
 }

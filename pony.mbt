@@ -4,12 +4,21 @@ pub suberror RouterError {
 } derive(Debug, ToJson)
 
 ///|
+pub extend RouterError with @debug.Debug::{to_repr}
+
+///|
+pub extend RouterError with ToJson::{to_json}
+
+///|
 pub impl Show for RouterError with fn to_string(self) {
   match self {
     InvalidPattern(http_method~, path~, reason~) =>
       "InvalidRoute(\{http_method} \{path}): \{reason}"
   }
 }
+
+///|
+pub extend RouterError with Show::{to_string, output}
 
 ///|
 /// Errors raised by the framework itself, from the context accessor
@@ -28,6 +37,12 @@ pub(all) suberror PonyError {
   MissingFormFile(String)
   InvalidValue(String, String)
 } derive(Debug, ToJson)
+
+///|
+pub extend PonyError with @debug.Debug::{to_repr}
+
+///|
+pub extend PonyError with ToJson::{to_json}
 
 ///|
 pub impl ToApiError for PonyError with fn to_api_error(self : PonyError) -> ApiError {
@@ -52,6 +67,9 @@ pub impl ToApiError for PonyError with fn to_api_error(self : PonyError) -> ApiE
 }
 
 ///|
+pub extend PonyError with ToApiError::{to_api_error}
+
+///|
 pub(all) enum HttpMethod {
   Get
   Head
@@ -64,6 +82,21 @@ pub(all) enum HttpMethod {
   Patch
   Any // 匹配任意方法
 } derive(Debug, Eq, Compare, Hash, ToJson)
+
+///|
+pub extend HttpMethod with @debug.Debug::{to_repr}
+
+///|
+pub extend HttpMethod with Eq::{not_equal, equal}
+
+///|
+pub extend HttpMethod with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend HttpMethod with Hash::{hash, hash_combine}
+
+///|
+pub extend HttpMethod with ToJson::{to_json}
 
 ///|
 pub impl Show for HttpMethod with fn output(self, logger) {
@@ -81,6 +114,9 @@ pub impl Show for HttpMethod with fn output(self, logger) {
   }
   logger.write_string(name)
 }
+
+///|
+pub extend HttpMethod with Show::{to_string, output}
 
 ///|
 pub fn HttpMethod::from_std(meth : @http.RequestMethod) -> HttpMethod {
@@ -124,8 +160,8 @@ pub fn Values::get_all(self : Values, key : String) -> Array[String] {
 }
 
 ///|
-/// Case-insensitive HTTP headers with lowercased keys.
-pub(all) struct HttpHeaders(Map[String, String])
+/// Case-insensitive HTTP headers backed by `@http.Headers`.
+pub(all) struct HttpHeaders(Map[@http.CaseInsensitiveString, String])
 
 ///|
 pub fn HttpHeaders::new() -> HttpHeaders {
@@ -133,7 +169,9 @@ pub fn HttpHeaders::new() -> HttpHeaders {
 }
 
 ///|
-pub fn HttpHeaders::from_map(m : Map[String, String]) -> HttpHeaders {
+pub fn HttpHeaders::from_map(
+  m : Map[@http.CaseInsensitiveString, String],
+) -> HttpHeaders {
   HttpHeaders(m)
 }
 
@@ -141,36 +179,38 @@ pub fn HttpHeaders::from_map(m : Map[String, String]) -> HttpHeaders {
 /// Return the value for `key` (case-insensitive lookup), or `None`.
 pub fn HttpHeaders::get(self : HttpHeaders, key : String) -> String? {
   let HttpHeaders(m) = self
-  m.get(key.to_lower())
+  m.get(@http.CaseInsensitiveString(key))
 }
 
 ///|
-/// Set the value for `key`, lowercasing the key first.
+/// Set the value for `key` (case-insensitive).
 pub fn HttpHeaders::set(
   self : HttpHeaders,
   key : String,
   value : String,
 ) -> Unit {
   let HttpHeaders(m) = self
-  m[key.to_lower()] = value
+  m[@http.CaseInsensitiveString(key)] = value
 }
 
 ///|
-/// Return the underlying `Map[String, String]`.
-pub fn HttpHeaders::to_map(self : HttpHeaders) -> Map[String, String] {
+/// Return the underlying header map.
+pub fn HttpHeaders::to_map(
+  self : HttpHeaders,
+) -> Map[@http.CaseInsensitiveString, String] {
   let HttpHeaders(m) = self
   m
 }
 
 ///|
-/// Merge entries from `other` into `self`, lowercasing keys.
+/// Merge entries from `other` into `self`.
 pub fn HttpHeaders::merge_in_place(
   self : HttpHeaders,
-  other : Map[String, String],
+  other : Map[@http.CaseInsensitiveString, String],
 ) -> Unit {
   let HttpHeaders(m) = self
   for k, v in other {
-    m[k.to_lower()] = v
+    m[k] = v
   }
 }
 
@@ -610,7 +650,7 @@ pub async fn Context::redirect(
 
 ///|
 pub impl Show for Context with fn to_string(self : Context) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   sb
   ..write_string("Context(")
   ..write_string(self.http_method.to_string())
@@ -634,9 +674,15 @@ pub impl Show for Context with fn output(self : Context, out : &Logger) -> Unit 
 }
 
 ///|
+pub extend Context with Show::{to_string, output}
+
+///|
 
 ///|
 pub(all) struct Handler(async (Context) -> Unit) derive(Debug)
+
+///|
+pub extend Handler with @debug.Debug::{to_repr}
 
 ///|
 pub enum RouteResult {
@@ -652,6 +698,9 @@ pub struct Router {
   mut not_found_handler : Handler?
   mut method_not_allowed_handler : Handler?
 } derive(Debug)
+
+///|
+pub extend Router with @debug.Debug::{to_repr}
 
 // Default handlers
 
@@ -669,6 +718,9 @@ fn default_method_not_allowed() -> Handler {
 pub impl Show for Router with fn to_string(self : Router) -> String {
   self.tree.to_string()
 }
+
+///|
+pub extend Router with Show::{to_string, output}
 
 ///|
 pub fn Router::Router() -> Router {
@@ -769,12 +821,12 @@ pub struct Server {
 
 ///|
 pub fn Server::Server(addr : String, router : Router) -> Server {
-  { router, addr, read_timeout: None, write_timeout: None, request_id: 0 }
+  { router, addr, read_timeout: None, write_timeout: None, request_id: 0, }
 }
 
 ///|
 pub fn Server::with_timeout(self : Server, read? : Int, write? : Int) -> Server {
-  { ..self, read_timeout: read, write_timeout: write }
+  { ..self, read_timeout: read, write_timeout: write, }
 }
 
 ///|
@@ -783,7 +835,7 @@ pub async fn Server::start(self : Server) -> Unit {
   server.run_forever((req, req_body, resp_writer) => {
     let ctx = self.router.build_ctx(req, req_body, resp_writer)
     self.request_id += 1
-    ctx.set_ext(RequestId::{  }, self.request_id.to_string())
+    ctx.set_ext(RequestId::{ }, self.request_id.to_string())
     self.router.handler(ctx)
   })
 }
@@ -827,7 +879,7 @@ pub fn Router::build_ctx(
   resp_writer : @http.ServerConnection,
 ) -> Context {
   let url = @url.parse_request_uri(req.path) catch {
-    _ => @url.URL::{ ..@url.empty_url, path: Some(req.path), query: None }
+    _ => @url.URL::{ ..@url.empty_url, path: Some(req.path), query: None, }
   }
   Context::{
     http_method: HttpMethod::from_std(req.meth),

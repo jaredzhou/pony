@@ -23,15 +23,15 @@ fn fixture_image_bytes() -> Bytes {
 async test "test_pony" {
   // --- middleware ---
   let mut count = 0
-  let _counter : Middleware = next => {
+  let _counter : @pony.Middleware = next => {
     ctx => {
       count = count + 1
       next(ctx)
     }
   }
-  let logbuf = StringBuilder::new()
+  let logbuf = StringBuilder()
   let logmsg = "logmw test"
-  let _logmw : Middleware = next => {
+  let _logmw : @pony.Middleware = next => {
     ctx => {
       logbuf.write_string(logmsg)
       next(ctx)
@@ -39,50 +39,54 @@ async test "test_pony" {
   }
 
   // --- handlers ---
-  let ping : Handler = ctx => ctx.write_text(200, "pong")
-  let ping_all : Handler = ctx => ctx.write_text(200, "pong all")
-  let ping_all2 : Handler = ctx => ctx.write_text(200, "pong all 2")
-  let ping_one : Handler = ctx => {
+  let ping : @pony.Handler = ctx => ctx.write_text(200, "pong")
+  let ping_all : @pony.Handler = ctx => ctx.write_text(200, "pong all")
+  let ping_all2 : @pony.Handler = ctx => ctx.write_text(200, "pong all 2")
+  let ping_one : @pony.Handler = ctx => {
     let id = ctx.try_param("id").unwrap_or("")
     ctx.write_text(200, "pong " + id)
   }
-  let ping_woop : Handler = ctx => {
+  let ping_woop : @pony.Handler = ctx => {
     let id = ctx.try_param("iidd").unwrap_or("")
     ctx.write_text(200, "pong woop " + id)
   }
-  let catch_all : Handler = ctx => ctx.write_text(200, "caughtall")
-  let echo_query : Handler = ctx => {
+  let catch_all : @pony.Handler = ctx => ctx.write_text(200, "caughtall")
+  let echo_query : @pony.Handler = ctx => {
     let name = ctx.try_query("name").unwrap_or("none")
     ctx.write_text(200, "hello " + name)
   }
-  let login : Handler = async fn(ctx) {
+  let login : @pony.Handler = async fn(ctx) {
     let user = ctx.try_form("user").unwrap_or("")
     ctx.write_text(200, "welcome " + user)
   }
 
   // --- custom not-found & method-not-allowed ---
-  let custom_not_found : Handler = ctx => ctx.write_text(404, "custom 404")
-  let custom_not_allowed : Handler = ctx => ctx.write_text(405, "custom 405")
+  let custom_not_found : @pony.Handler = ctx => {
+    ctx.write_text(404, "custom 404")
+  }
+  let custom_not_allowed : @pony.Handler = ctx => {
+    ctx.write_text(405, "custom 405")
+  }
 
   // --- sub-router for mount ---
-  let sub = Router::Router()
+  let sub = @pony.Router::Router()
   sub.add(
-    HttpMethod::Get,
+    @pony.HttpMethod::Get,
     "/hi",
     ctx => ctx.write_text(200, "hello from sub"),
     name="sub_hi",
   )
 
   // --- router ---
-  let r = Router::Router()
-  r.add(HttpMethod::Get, "/echo", echo_query, name="echo")
-  r.add(HttpMethod::Post, "/login", login, name="login")
-  r.add(HttpMethod::Get, "/ping", ping, name="ping")
-  r.add(HttpMethod::Get, "/pingall", ping_all, name="pingAll")
-  r.add(HttpMethod::Get, "/ping/all", ping_all, name="pingAllAlias")
-  r.add(HttpMethod::Get, "/ping/all2", ping_all2, name="pingAll2")
-  r.add(HttpMethod::Get, "/ping/{id}", ping_one, name="pingOne")
-  r.add(HttpMethod::Get, "/ping/{iidd}/woop", ping_woop, name="pingWoop2")
+  let r = @pony.Router::Router()
+  r.add(@pony.HttpMethod::Get, "/echo", echo_query, name="echo")
+  r.add(@pony.HttpMethod::Post, "/login", login, name="login")
+  r.add(@pony.HttpMethod::Get, "/ping", ping, name="ping")
+  r.add(@pony.HttpMethod::Get, "/pingall", ping_all, name="pingAll")
+  r.add(@pony.HttpMethod::Get, "/ping/all", ping_all, name="pingAllAlias")
+  r.add(@pony.HttpMethod::Get, "/ping/all2", ping_all2, name="pingAll2")
+  r.add(@pony.HttpMethod::Get, "/ping/{id}", ping_one, name="pingOne")
+  r.add(@pony.HttpMethod::Get, "/ping/{iidd}/woop", ping_woop, name="pingWoop2")
   r.any("/admin/*", catch_all, name="catchAll")
   r.mount("/api", sub)
   r.set_not_found(custom_not_found)
@@ -119,7 +123,7 @@ async test "test_pony" {
   @async.with_task_group() <| group => {
     let port = 19876
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      start("127.0.0.1:\{port}", r)
+      @pony.start("127.0.0.1:\{port}", r)
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
@@ -172,56 +176,86 @@ async test "test_pony" {
 /// default to no details, and map to the expected HTTP status.
 test "api_error_helpers" {
   let cases = [
-    (cancelled, fn(m : String) -> ApiError { ApiError::cancelled(m) }, 499),
-    (unknown, fn(m : String) -> ApiError { ApiError::unknown(m) }, 500),
     (
-      invalid_argument,
-      fn(m : String) -> ApiError { ApiError::invalid_argument(m) },
+      @pony.cancelled,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::cancelled(m) },
+      499,
+    ),
+    (
+      @pony.unknown,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::unknown(m) },
+      500,
+    ),
+    (
+      @pony.invalid_argument,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::invalid_argument(m) },
       400,
     ),
     (
-      deadline_exceeded,
-      fn(m : String) -> ApiError { ApiError::deadline_exceeded(m) },
+      @pony.deadline_exceeded,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::deadline_exceeded(m) },
       504,
     ),
-    (not_found, fn(m : String) -> ApiError { ApiError::not_found(m) }, 404),
     (
-      already_exists,
-      fn(m : String) -> ApiError { ApiError::already_exists(m) },
+      @pony.not_found,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::not_found(m) },
+      404,
+    ),
+    (
+      @pony.already_exists,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::already_exists(m) },
       409,
     ),
     (
-      permission_denied,
-      fn(m : String) -> ApiError { ApiError::permission_denied(m) },
+      @pony.permission_denied,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::permission_denied(m) },
       403,
     ),
     (
-      resource_exhausted,
-      fn(m : String) -> ApiError { ApiError::resource_exhausted(m) },
+      @pony.resource_exhausted,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::resource_exhausted(m) },
       429,
     ),
     (
-      failed_precondition,
-      fn(m : String) -> ApiError { ApiError::failed_precondition(m) },
-      400,
-    ),
-    (aborted, fn(m : String) -> ApiError { ApiError::aborted(m) }, 409),
-    (
-      out_of_range,
-      fn(m : String) -> ApiError { ApiError::out_of_range(m) },
+      @pony.failed_precondition,
+      fn(m : String) -> @pony.ApiError {
+        @pony.ApiError::failed_precondition(m)
+      },
       400,
     ),
     (
-      unimplemented,
-      fn(m : String) -> ApiError { ApiError::unimplemented(m) },
+      @pony.aborted,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::aborted(m) },
+      409,
+    ),
+    (
+      @pony.out_of_range,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::out_of_range(m) },
+      400,
+    ),
+    (
+      @pony.unimplemented,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::unimplemented(m) },
       501,
     ),
-    (internal, fn(m : String) -> ApiError { ApiError::internal(m) }, 500),
-    (unavailable, fn(m : String) -> ApiError { ApiError::unavailable(m) }, 503),
-    (data_loss, fn(m : String) -> ApiError { ApiError::data_loss(m) }, 500),
     (
-      unauthenticated,
-      fn(m : String) -> ApiError { ApiError::unauthenticated(m) },
+      @pony.internal,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::internal(m) },
+      500,
+    ),
+    (
+      @pony.unavailable,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::unavailable(m) },
+      503,
+    ),
+    (
+      @pony.data_loss,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::data_loss(m) },
+      500,
+    ),
+    (
+      @pony.unauthenticated,
+      fn(m : String) -> @pony.ApiError { @pony.ApiError::unauthenticated(m) },
       401,
     ),
   ]
@@ -231,16 +265,16 @@ test "api_error_helpers" {
     assert_eq(e.code, code)
     assert_eq(e.message, "boom")
     assert_true(e.details is None)
-    assert_eq(ApiError::to_http_status(e.code), http_status)
+    assert_eq(@pony.ApiError::to_http_status(e.code), http_status)
   }
 }
 
 ///|
 /// query parameter: key with value, key without value, multi-value key.
 async test "test_query" {
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.add(
-    HttpMethod::Get,
+    @pony.HttpMethod::Get,
     "/search",
     ctx => {
       let q = ctx.try_query("q").unwrap_or("")
@@ -260,7 +294,7 @@ async test "test_query" {
   @async.with_task_group() <| group => {
     let port = 19877
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      start("127.0.0.1:\{port}", r)
+      @pony.start("127.0.0.1:\{port}", r)
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
@@ -306,9 +340,9 @@ struct User {
 ///|
 /// JSON body deserialization via ctx.json() with a custom struct.
 async test "test_json" {
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.add(
-    HttpMethod::Post,
+    @pony.HttpMethod::Post,
     "/user",
     async fn(ctx) {
       let user : User = ctx.json() catch {
@@ -325,7 +359,7 @@ async test "test_json" {
   @async.with_task_group() <| group => {
     let port = 19878
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      start("127.0.0.1:\{port}", r)
+      @pony.start("127.0.0.1:\{port}", r)
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
@@ -342,9 +376,9 @@ async test "test_json" {
 ///|
 /// write_bytes, set_content_type, no_content, redirect.
 async test "test_write" {
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.add(
-    HttpMethod::Get,
+    @pony.HttpMethod::Get,
     "/bytes",
     ctx => {
       ctx.set_content_type("application/octet-stream")
@@ -352,13 +386,23 @@ async test "test_write" {
     },
     name="bytes",
   )
-  r.add(HttpMethod::Post, "/done", ctx => ctx.no_content(), name="no_content")
-  r.add(HttpMethod::Get, "/go", ctx => ctx.redirect("/ping"), name="redirect")
+  r.add(
+    @pony.HttpMethod::Post,
+    "/done",
+    ctx => ctx.no_content(),
+    name="no_content",
+  )
+  r.add(
+    @pony.HttpMethod::Get,
+    "/go",
+    ctx => ctx.redirect("/ping"),
+    name="redirect",
+  )
 
   @async.with_task_group() <| group => {
     let port = 19879
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      start("127.0.0.1:\{port}", r)
+      @pony.start("127.0.0.1:\{port}", r)
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
@@ -385,10 +429,15 @@ async test "test_write" {
 ///|
 /// Mount: sub-router with middleware, not-found, method-not-allowed.
 async test "test_mount" {
-  let sub = Router::Router()
-  sub.add(HttpMethod::Get, "/hi", ctx => ctx.write_text(200, "hi"), name="hi")
+  let sub = @pony.Router::Router()
   sub.add(
-    HttpMethod::Post,
+    @pony.HttpMethod::Get,
+    "/hi",
+    ctx => ctx.write_text(200, "hi"),
+    name="hi",
+  )
+  sub.add(
+    @pony.HttpMethod::Post,
     "/create",
     ctx => ctx.write_text(201, "created"),
     name="create",
@@ -396,13 +445,13 @@ async test "test_mount" {
   sub.set_not_found(ctx => ctx.write_text(404, "sub 404"))
   sub.set_method_not_allowed(ctx => ctx.write_text(405, "sub 405"))
 
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.mount("/v1", sub)
 
   @async.with_task_group() <| group => {
     let port = 19880
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      start("127.0.0.1:\{port}", r)
+      @pony.start("127.0.0.1:\{port}", r)
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
@@ -430,13 +479,13 @@ async test "test_mount" {
 ///|
 /// JWT middleware: decode bearer token and set user_id in ext.
 async test "test_jwt" {
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.use_mw(@mw.jwt(@jwt.new_hmac_sha256(b"secret")))
   r.add(
-    HttpMethod::Get,
+    @pony.HttpMethod::Get,
     "/me",
     ctx => {
-      let user : String = ctx.get_ext(@pony.UserId::{  }) catch {
+      let user : String = ctx.get_ext(@pony.UserId::{ }) catch {
         _ => "anonymous"
       }
       ctx.write_text(200, "user=" + user)
@@ -479,18 +528,18 @@ async test "test_jwt" {
 ///|
 /// Server: encapsulated router with request_id.
 async test "test_server" {
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.add(
-    HttpMethod::Get,
+    @pony.HttpMethod::Get,
     "/hello",
     ctx => {
-      let id = ctx.get_ext(@pony.RequestId::{  }) catch { _ => "?" }
+      let id = ctx.get_ext(@pony.RequestId::{ }) catch { _ => "?" }
       ctx.write_text(200, "req=" + id)
     },
     name="hello",
   )
 
-  let s = Server::Server("127.0.0.1:19881", r)
+  let s = @pony.Server::Server("127.0.0.1:19881", r)
 
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => { s.start() }
@@ -510,12 +559,12 @@ test "any test" {
 
 ///|
 test "ext_store" {
-  let s = ExtStore::new()
-  s.set(RequestId::{  }, "REQ-42")
-  s.set(UserId::{  }, "USER-99")
+  let s = @pony.ExtStore::new()
+  s.set(@pony.RequestId::{ }, "REQ-42")
+  s.set(@pony.UserId::{ }, "USER-99")
 
-  let req_id : String = s.get(RequestId::{  }) catch { _ => "?" }
-  let user_id : String = s.get(UserId::{  }) catch { _ => "?" }
+  let req_id : String = s.get(@pony.RequestId::{ }) catch { _ => "?" }
+  let user_id : String = s.get(@pony.UserId::{ }) catch { _ => "?" }
 
   assert_eq(req_id, "REQ-42")
   assert_eq(user_id, "USER-99")
@@ -553,9 +602,9 @@ fn build_body(
 ///|
 /// Integration: parse a multipart upload through the HTTP server.
 async test "test_multipart_upload" {
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.add(
-    HttpMethod::Post,
+    @pony.HttpMethod::Post,
     "/upload",
     async fn(ctx) {
       ctx.parse_multipart_form() catch {
@@ -582,7 +631,7 @@ async test "test_multipart_upload" {
   @async.with_task_group() <| group => {
     let port = 19899
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      start("127.0.0.1:\{port}", r)
+      @pony.start("127.0.0.1:\{port}", r)
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(1000)
@@ -607,9 +656,9 @@ async test "test_multipart_upload_disk_spill" {
   @fs.mkdir("data", recursive=true) catch {
     _ => ()
   }
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.add(
-    HttpMethod::Post,
+    @pony.HttpMethod::Post,
     "/upload-spill",
     async fn(ctx) {
       ctx.parse_multipart_form(max_memory=1) catch {
@@ -643,7 +692,7 @@ async test "test_multipart_upload_disk_spill" {
   @async.with_task_group() <| group => {
     let port = 19901
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      start("127.0.0.1:\{port}", r)
+      @pony.start("127.0.0.1:\{port}", r)
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(1000)
@@ -699,9 +748,9 @@ async test "test_multipart_upload_custom_writer" {
     _ => ()
   }
 
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.add(
-    HttpMethod::Post,
+    @pony.HttpMethod::Post,
     "/upload-writer",
     async fn(ctx) {
       let file = @fs.create(target) catch {
@@ -732,7 +781,7 @@ async test "test_multipart_upload_custom_writer" {
   @async.with_task_group() <| group => {
     let port = 19902
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      start("127.0.0.1:\{port}", r)
+      @pony.start("127.0.0.1:\{port}", r)
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(1000)
@@ -787,9 +836,9 @@ impl @pony.FromStr for ItemId with fn from_str(s) {
 /// Typed accessors: param/query/header parsed via FromStr,
 /// parse failure -> InvalidValue -> HTTP 400, custom impl.
 async test "test_typed_accessors" {
-  let r = Router::Router()
+  let r = @pony.Router::Router()
   r.add(
-    HttpMethod::Get,
+    @pony.HttpMethod::Get,
     "/item/{id}",
     ctx => {
       let id : Int = ctx.param("id") catch {
@@ -803,7 +852,7 @@ async test "test_typed_accessors" {
     name="item",
   )
   r.add(
-    HttpMethod::Get,
+    @pony.HttpMethod::Get,
     "/typed",
     ctx => {
       let page : Int = ctx.query("page") catch { _ => 1 }
@@ -814,7 +863,7 @@ async test "test_typed_accessors" {
     name="typed",
   )
   r.add(
-    HttpMethod::Get,
+    @pony.HttpMethod::Get,
     "/item2/{id}",
     ctx => {
       let iid : ItemId = ctx.param("id") catch {
@@ -832,7 +881,7 @@ async test "test_typed_accessors" {
   @async.with_task_group() <| group => {
     let port = 19903
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => {
-      start("127.0.0.1:\{port}", r)
+      @pony.start("127.0.0.1:\{port}", r)
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)

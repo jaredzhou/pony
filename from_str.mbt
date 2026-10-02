@@ -23,9 +23,9 @@
 /// # Example
 /// ```mbt check
 /// test {
-///   let n : Int = FromStr::from_str("42") catch { _ => -1 }
+///   let n : Int = @pony.FromStr::from_str("42") catch { _ => -1 }
 ///   inspect(n, content="42")
-///   let b : Bool = FromStr::from_str("true") catch { _ => false }
+///   let b : Bool = @pony.FromStr::from_str("true") catch { _ => false }
 ///   inspect(b, content="true")
 /// }
 /// ```

@@ -13,3 +13,12 @@ pub(all) suberror ExtError {
   /// The stored value could not be decoded into the requested type.
   DecodeError(key~ : String, msg~ : String)
 } derive(Debug, Eq, ToJson)
+
+///|
+pub extend ExtError with @debug.Debug::{to_repr}
+
+///|
+pub extend ExtError with Eq::{not_equal, equal}
+
+///|
+pub extend ExtError with ToJson::{to_json}

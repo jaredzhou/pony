@@ -27,12 +27,11 @@ pub fn canonicalHeaderKey(key : String) -> String {
   let parts = lower.split("-")
   let out_parts : Array[String] = []
   for p in parts {
-    if p == "" {
-      out_parts.push("")
-    } else {
+    match p {
+      "" => out_parts.push("")
       // upper first char, keep rest
-      guard p is [first, .. rest]
-      out_parts.push(first.to_string().to_upper() + rest.to_owned())
+      [first, .. rest] =>
+        out_parts.push(first.to_string().to_upper() + rest.to_owned())
     }
   }
   out_parts.join("-")

@@ -120,6 +120,9 @@ pub(all) suberror MultipartError {
   FileIOError(String)
 } derive(Debug)
 
+///|
+pub extend MultipartError with @debug.Debug::{to_repr}
+
 // ---------------------------------------------------------------------------
 // IO traits
 // ---------------------------------------------------------------------------
@@ -453,7 +456,7 @@ struct MultipartForm {
 
 ///|
 fn MultipartForm::new() -> MultipartForm {
-  { values: Values::new(), files: Map([]) }
+  { values: Values::new(), files: Map([]), }
 }
 
 ///|

@@ -20,10 +20,10 @@ test "middleware_pattern_compiles" {
 test "auth_middleware_full_flow" {
   // Simulate middleware: read header, store in ext
   let ext = ExtStore::new()
-  ext.set(UserId::{  }, "user-42")
+  ext.set(UserId::{ }, "user-42")
 
   // Simulate handler: read ext
-  let user_id : String = ext.get(UserId::{  }) catch { _ => "?" }
+  let user_id : String = ext.get(UserId::{ }) catch { _ => "?" }
   assert_eq(user_id, "user-42")
 }
 
@@ -31,7 +31,7 @@ test "auth_middleware_full_flow" {
 test "auth_middleware_missing_ext_try" {
   let ext = ExtStore::new()
   // When no header was sent, try_get returns None
-  let got : String? = ext.try_get(UserId::{  })
+  let got : String? = ext.try_get(UserId::{ })
   assert_true(got is None)
 }
 
@@ -39,8 +39,8 @@ test "auth_middleware_missing_ext_try" {
 test "auth_middleware_missing_ext_raise" {
   let ext = ExtStore::new()
   // When no header was sent, get raises MissingExt
-  let result = ext.get(UserId::{  }) catch { e => e }
-  guard result is ExtError::Missing
+  let result = ext.get(UserId::{ }) catch { e => e }
+  assert_true(result is ExtError::Missing)
 }
 
 ///|

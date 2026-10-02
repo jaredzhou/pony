@@ -188,6 +188,10 @@ pub(all) suberror ExtError {
   Missing
   DecodeError(key~ : String, msg~ : String)
 } derive(Eq, ToJson, @debug.Debug)
+pub fn ExtError::equal(Self, Self) -> Bool
+pub fn ExtError::not_equal(Self, Self) -> Bool
+pub fn ExtError::to_json(Self) -> Json
+pub fn ExtError::to_repr(Self) -> @debug.Repr
 
 pub(all) suberror MultipartError {
   MissingBoundary
@@ -196,6 +200,7 @@ pub(all) suberror MultipartError {
   FileTooLarge(String, Int64)
   FileIOError(String)
 } derive(@debug.Debug)
+pub fn MultipartError::to_repr(Self) -> @debug.Repr
 
 pub(all) suberror PonyError {
   MissingParam(String)
@@ -207,11 +212,18 @@ pub(all) suberror PonyError {
   MissingFormFile(String)
   InvalidValue(String, String)
 } derive(ToJson, @debug.Debug)
+pub fn PonyError::to_api_error(Self) -> ApiError
+pub fn PonyError::to_json(Self) -> Json
+pub fn PonyError::to_repr(Self) -> @debug.Repr
 pub impl ToApiError for PonyError
 
 pub suberror RouterError {
   InvalidPattern(http_method~ : String, path~ : String, reason~ : String)
 } derive(ToJson, @debug.Debug)
+pub fn RouterError::output(Self, &Logger) -> Unit
+pub fn RouterError::to_json(Self) -> Json
+pub fn RouterError::to_repr(Self) -> @debug.Repr
+pub fn RouterError::to_string(Self) -> String
 pub impl Show for RouterError
 
 // Types and methods
@@ -233,7 +245,10 @@ pub fn ApiError::not_found(String) -> Self
 pub fn ApiError::out_of_range(String) -> Self
 pub fn ApiError::permission_denied(String) -> Self
 pub fn ApiError::resource_exhausted(String) -> Self
+pub fn ApiError::to_api_error(Self) -> Self
 pub fn ApiError::to_http_status(Int) -> Int
+pub fn ApiError::to_json(Self) -> Json
+pub fn ApiError::to_repr(Self) -> @debug.Repr
 pub fn ApiError::unauthenticated(String) -> Self
 pub fn ApiError::unavailable(String) -> Self
 pub fn ApiError::unimplemented(String) -> Self
@@ -263,6 +278,7 @@ pub fn[K, V] Context::get_ext(Self, K) -> V raise PonyError
 pub fn[T : FromStr] Context::header(Self, String) -> T raise PonyError
 pub async fn[T : @json.FromJson] Context::json(Self) -> T
 pub async fn Context::no_content(Self) -> Unit
+pub fn Context::output(Self, &Logger) -> Unit
 pub fn[T : FromStr] Context::param(Self, String) -> T raise PonyError
 pub async fn Context::parse_multipart_form(Self, max_memory? : Int64, writers? : Map[String, FileWriter]) -> Unit
 pub fn[T : FromStr] Context::query(Self, String) -> T raise PonyError
@@ -273,6 +289,7 @@ pub async fn[T : ToJson] Context::reply_ok(Self, T) -> Unit
 pub fn Context::set_content_type(Self, String) -> Unit
 pub fn[K, V] Context::set_ext(Self, K, V) -> Unit
 pub fn Context::set_header(Self, String, String) -> Unit
+pub fn Context::to_string(Self) -> String
 pub async fn Context::try_form(Self, String) -> String?
 pub fn Context::try_form_file(Self, String) -> FileHeader?
 pub fn[K, V] Context::try_get_ext(Self, K) -> V?
@@ -287,6 +304,7 @@ pub async fn Context::write_text(Self, Int, msg? : String, String) -> Unit
 pub impl Show for Context
 
 type Endpoint derive(@debug.Debug)
+pub fn Endpoint::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ExtStore(Array[(String, @any.Any)])
 pub fn[K, V] ExtStore::get(Self, K) -> V raise ExtError
@@ -311,6 +329,7 @@ pub fn FileHeader::path(Self) -> String?
 pub(all) struct FileWriter(@fs.File)
 
 pub(all) struct Handler(async (Context) -> Unit) derive(@debug.Debug)
+pub fn Handler::to_repr(Self) -> @debug.Repr
 
 pub struct Header(Map[String, Array[String]])
 pub fn Header::add(Self, String, String) -> Unit
@@ -321,13 +340,13 @@ pub fn Header::has(Self, String) -> Bool
 pub fn Header::set(Self, String, String) -> Unit
 pub fn Header::values(Self, String) -> Array[String]
 
-pub(all) struct HttpHeaders(Map[String, String])
-pub fn HttpHeaders::from_map(Map[String, String]) -> Self
+pub(all) struct HttpHeaders(Map[@http.CaseInsensitiveString, String])
+pub fn HttpHeaders::from_map(Map[@http.CaseInsensitiveString, String]) -> Self
 pub fn HttpHeaders::get(Self, String) -> String?
-pub fn HttpHeaders::merge_in_place(Self, Map[String, String]) -> Unit
+pub fn HttpHeaders::merge_in_place(Self, Map[@http.CaseInsensitiveString, String]) -> Unit
 pub fn HttpHeaders::new() -> Self
 pub fn HttpHeaders::set(Self, String, String) -> Unit
-pub fn HttpHeaders::to_map(Self) -> Map[String, String]
+pub fn HttpHeaders::to_map(Self) -> Map[@http.CaseInsensitiveString, String]
 
 pub(all) enum HttpMethod {
   Get
@@ -341,17 +360,37 @@ pub(all) enum HttpMethod {
   Patch
   Any
 } derive(Compare, Eq, Hash, ToJson, @debug.Debug)
+pub fn HttpMethod::compare(Self, Self) -> Int
+pub fn HttpMethod::equal(Self, Self) -> Bool
 pub fn HttpMethod::from_std(@http.RequestMethod) -> Self
+pub fn HttpMethod::hash(Self) -> Int
+pub fn HttpMethod::hash_combine(Self, Hasher) -> Unit
+pub fn HttpMethod::not_equal(Self, Self) -> Bool
+pub fn HttpMethod::op_ge(Self, Self) -> Bool
+pub fn HttpMethod::op_gt(Self, Self) -> Bool
+pub fn HttpMethod::op_le(Self, Self) -> Bool
+pub fn HttpMethod::op_lt(Self, Self) -> Bool
+pub fn HttpMethod::output(Self, &Logger) -> Unit
+pub fn HttpMethod::to_json(Self) -> Json
+pub fn HttpMethod::to_repr(Self) -> @debug.Repr
+pub fn HttpMethod::to_string(Self) -> String
 pub impl Show for HttpMethod
 
 pub(all) struct Middleware((Handler) -> Handler) derive(@debug.Debug)
+pub fn Middleware::to_repr(Self) -> @debug.Repr
 
 type MultipartForm
 
 type Node derive(@debug.Debug)
+pub fn Node::output(Self, &Logger) -> Unit
+pub fn Node::to_repr(Self) -> @debug.Repr
+pub fn Node::to_string(Self) -> String
 pub impl Show for Node
 
 type NodeType derive(@debug.Debug)
+pub fn NodeType::output(Self, &Logger) -> Unit
+pub fn NodeType::to_repr(Self) -> @debug.Repr
+pub fn NodeType::to_string(Self) -> String
 pub impl Show for NodeType
 
 type ParamKV
@@ -395,8 +434,11 @@ pub fn Router::build_ctx(Self, @http.Request, &@io.Reader, @http.ServerConnectio
 pub async fn Router::handle(Self, @http.Request, &@io.Reader, @http.ServerConnection) -> Unit
 pub async fn Router::handler(Self, Context) -> Unit
 pub fn Router::mount(Self, String, Self) -> Unit raise RouterError
+pub fn Router::output(Self, &Logger) -> Unit
 pub fn Router::set_method_not_allowed(Self, Handler) -> Unit
 pub fn Router::set_not_found(Self, Handler) -> Unit
+pub fn Router::to_repr(Self) -> @debug.Repr
+pub fn Router::to_string(Self) -> String
 pub fn Router::use_mw(Self, Middleware) -> Unit
 pub impl Show for Router
 
@@ -446,4 +488,3 @@ pub(open) trait ToApiError {
 
 pub trait WriterCloser : @io.Writer + Closer {
 }
-

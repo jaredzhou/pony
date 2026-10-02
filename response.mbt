@@ -6,6 +6,12 @@ pub(all) struct ApiError {
 } derive(Debug, ToJson)
 
 ///|
+pub extend ApiError with @debug.Debug::{to_repr}
+
+///|
+pub extend ApiError with ToJson::{to_json}
+
+///|
 pub let ok : Int = 0
 
 ///|
@@ -58,7 +64,7 @@ pub let unauthenticated : Int = 16
 
 ///|
 pub fn ApiError::new(code : Int, message : String) -> ApiError {
-  { code, message, details: None }
+  { code, message, details: None, }
 }
 
 ///|
@@ -194,6 +200,9 @@ pub(open) trait ToApiError {
 pub impl ToApiError for ApiError with fn to_api_error(self : ApiError) -> ApiError {
   self
 }
+
+///|
+pub extend ApiError with ToApiError::{to_api_error}
 
 ///|
 /// Convert a `PonyError` to an `ApiError`.

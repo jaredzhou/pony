@@ -21,7 +21,7 @@ pub fn jwt(sig_method : @jwt.SigningMethod) -> @pony.Middleware {
       let (_token, claims) : (@jwt.Token, @jwt.RegisteredClaims) = parsed
       let user_id = claims.sub.unwrap_or("")
       if user_id != "" {
-        ctx.set_ext(@pony.UserId::{  }, user_id)
+        ctx.set_ext(@pony.UserId::{ }, user_id)
       }
       next(ctx)
     }
