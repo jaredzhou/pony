@@ -6,7 +6,7 @@ A lightweight HTTP web framework for MoonBit, inspired by Go's [Chi](https://git
 
 ```bash
 moon add jaredzhou/pony        # latest
-moon add jaredzhou/pony@0.3.0  # pin version
+moon add jaredzhou/pony@0.7.0  # pin version
 ```
 
 A complete example project is available at **[moon-examples/todo](https://github.com/jaredzhou/moon-examples/tree/main/todo)**.
@@ -19,12 +19,10 @@ fn main {
   let r = Router::Router()
 
   // GET /hello  => 200 "Hello, world!"
-  r.add(HttpMethod::Get, "/hello", ctx => {
-    ctx.write_text(status_ok, "Hello, world!")
-  })
+  r.get("/hello", ctx => ctx.write_text(status_ok, "Hello, world!"))
 
   // GET /greet/pony  => 200 "Hello, pony!"
-  r.add(HttpMethod::Get, "/greet/{name}", ctx => {
+  r.get("/greet/{name}", ctx => {
     let name = ctx.try_param("name").unwrap_or("stranger")
     ctx.write_text(status_ok, "Hello, \(name)!")
   })
@@ -37,29 +35,35 @@ fn main {
 
 ### Router
 
-The router is a radix tree with priority matching. Routes can be registered for specific HTTP methods or all methods via `any()`.
+The router is a radix tree with priority matching. Common HTTP methods have
+shortcut methods, and `any()` registers a route for all methods.
 
 ```moonbit nocheck
 let r = Router::Router()
 
 // Static route — exact path match
-r.add(HttpMethod::Get, "/ping", pong_handler)
+r.get("/ping", pong_handler)
 
 // Path parameter {param} — matches a single segment
-r.add(HttpMethod::Get, "/users/{id}", user_handler)
+r.get("/users/{id}", user_handler)
 
 // Wildcard * — matches everything after the prefix
-r.add(HttpMethod::Get, "/static/*", static_handler)
+r.get("/static/*", static_handler)
 
 // Multiple parameters in one pattern
-r.add(HttpMethod::Get, "/users/{userId}/posts/{postId}", post_handler)
+r.get("/users/{userId}/posts/{postId}", post_handler)
+
+// Other common HTTP methods
+r.post("/users", create_user_handler)
+r.put("/users/{id}", update_user_handler)
+r.patch("/users/{id}", patch_user_handler)
+r.delete("/users/{id}", delete_user_handler)
 
 // Match all HTTP methods
 r.any("/health", health_handler)
 
 // Route-specific middleware (applied before the handler)
-r.add(
-  HttpMethod::Get,
+r.get(
   "/admin",
   mws=[admin_auth],
   admin_handler,
@@ -67,7 +71,7 @@ r.add(
 
 // Sub-router mounting — all routes under /api/v1
 let api = Router::Router()
-api.add(HttpMethod::Get, "/status", status_handler)
+api.get("/status", status_handler)
 r.mount("/api/v1", api)
 
 // Custom 404 / 405 handlers
@@ -82,6 +86,7 @@ r.set_method_not_allowed(ctx => {
 | Method | Description |
 |---|---|
 | `r.add(method, pattern, handler)` | Add a route for a specific HTTP method |
+| `r.get/post/put/patch/delete/head/options(pattern, handler)` | Shortcuts for common HTTP methods |
 | `r.any(pattern, handler)` | Match all HTTP methods |
 | `r.mount(prefix, sub_router)` | Mount a sub-router under a prefix |
 | `r.use_mw(middleware)` | Add global middleware |
@@ -95,6 +100,10 @@ r.set_method_not_allowed(ctx => {
 | Static | `/ping` | `/ping` only |
 | Param `{name}` | `/users/{id}` | `/users/42`, `/users/alice` |
 | Wildcard `*` | `/static/*` | `/static/css/app.css`, `/static/js/main.js` |
+
+`r.add` and every shortcut method validate the complete pattern before
+modifying the router. If registration raises `RouterError::InvalidPattern`,
+the router is unchanged.
 
 ### Server
 
@@ -233,7 +242,7 @@ fn main {
   let r = Router::Router()
   r.use_mw(auth_middleware)
 
-  r.add(HttpMethod::Get, "/me", ctx => {
+  r.get("/me", ctx => {
     let user_id : String = ctx.get_ext(UserId{}) catch {
       e => {
         ctx.reply_error(e)
@@ -334,7 +343,7 @@ Handle multipart file uploads with `parse_multipart_form`, then access files via
 
 ```moonbit nocheck
 ///|
-r.add(HttpMethod::Post, "/upload", async ctx => {
+r.post("/upload", async ctx => {
   // Parse the multipart body (call once per request)
   ctx.parse_multipart_form()!
 

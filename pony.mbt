@@ -762,7 +762,10 @@ pub fn Router::set_method_not_allowed(self : Router, handler : Handler) -> Unit 
 }
 
 ///|
-/// Add a new route to the router
+/// Add a new route to the router.
+///
+/// The pattern is validated before the router tree is modified, so a failed
+/// registration leaves the router unchanged.
 /// # Parameters
 /// - `meth`: HTTP method
 /// - `pattern`: URL pattern, must start with `/`
@@ -771,8 +774,8 @@ pub fn Router::set_method_not_allowed(self : Router, handler : Handler) -> Unit 
 /// - `name`: Optional name for the route
 /// - `handler`: Handler function
 /// # Raises
-/// - `RouterError::InvalidPattern`: If the pattern does not start with `/`
-/// or is otherwise invalid
+/// - `RouterError::InvalidPattern`: If the pattern does not start with `/`,
+/// contains an unclosed path parameter, or has a misplaced wildcard
 pub fn Router::add(
   self : Router,
   meth : HttpMethod,
@@ -781,13 +784,7 @@ pub fn Router::add(
   mws~ : Array[Middleware] = [],
   handler : Handler,
 ) -> Unit raise RouterError {
-  guard pattern.has_prefix("/") else {
-    raise RouterError::InvalidPattern(
-      http_method=meth.to_string(),
-      path=pattern,
-      reason="pattern must start with /",
-    )
-  }
+  validate_route_pattern(pattern, meth)
   self.tree.insert(meth, pattern, name~, chain(mws, handler))
 }
 

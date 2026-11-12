@@ -447,10 +447,17 @@ pub fn Router::Router() -> Self
 pub fn Router::add(Self, HttpMethod, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
 pub fn Router::any(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
 pub fn Router::build_ctx(Self, @http.RequestHeader, &@io.BinaryReader, @http.ServerConnection) -> Context
+pub fn Router::delete(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
+pub fn Router::get(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
 pub async fn Router::handle(Self, @http.RequestHeader, &@io.BinaryReader, @http.ServerConnection) -> Unit
 pub async fn Router::handler(Self, Context) -> Unit
+pub fn Router::head(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
 pub fn Router::mount(Self, String, Self) -> Unit raise RouterError
+pub fn Router::options(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
 pub fn Router::output(Self, &Logger) -> Unit
+pub fn Router::patch(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
+pub fn Router::post(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
+pub fn Router::put(Self, String, name? : String, mws? : Array[Middleware], Handler) -> Unit raise RouterError
 pub fn Router::set_method_not_allowed(Self, Handler) -> Unit
 pub fn Router::set_not_found(Self, Handler) -> Unit
 pub fn Router::to_repr(Self) -> @debug.Repr
