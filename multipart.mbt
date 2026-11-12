@@ -112,13 +112,14 @@ pub let default_max_memory : Int64 = 32 * 1024 * 1024
 
 ///|
 /// Errors that may occur during multipart parsing.
+#derive(Debug)
 pub(all) suberror MultipartError {
   MissingBoundary
   MissingName
   MalformedBody(String)
   FileTooLarge(String, Int64)
   FileIOError(String)
-} derive(Debug)
+}
 
 ///|
 pub extend MultipartError with @debug.Debug::{to_repr}
@@ -135,31 +136,46 @@ pub trait Closer {
 
 ///|
 /// A writer that can be closed.
-pub trait WriterCloser: @io.Writer + Closer {}
+pub trait WriterCloser: @io.BinaryWriter + Closer {}
 
 ///|
 /// A reader that can be closed.
-pub trait ReaderCloser: @io.Reader + Closer {}
+pub trait ReaderCloser: @io.BinaryReader + Closer {}
 
 ///|
 /// Wraps an `@fs.File` as a `WriterCloser` for multipart uploads.
-pub(all) struct FileWriter(@fs.File)
-
-///|
-impl @io.Writer for FileWriter with fn write_once(
-  self : FileWriter,
-  data : Bytes,
-  offset~ : Int,
-  len~ : Int,
-) -> Int {
-  let FileWriter(f) = self
-  f.write_once(data, offset~, len~)
+pub(all) struct FileWriter {
+  file : @fs.File
+  controller : @io.BinaryWriterController
 }
 
 ///|
+pub fn FileWriter::FileWriter(file : @fs.File) -> FileWriter {
+  { file, controller: @io.BinaryWriterController::BinaryWriterController(), }
+}
+
+///|
+impl @io.BinaryWriterImpl for FileWriter with fn get_controller(self) {
+  self.controller
+}
+
+///|
+impl @io.BinaryWriterImpl for FileWriter with fn raw_write_impl(
+  self : FileWriter,
+  data : Bytes,
+  offset~ : Int32,
+  len~ : Int32,
+) -> Int32 {
+  self.file.write(data[offset:offset + len])
+  len
+}
+
+///|
+impl @io.BinaryWriter for FileWriter
+
+///|
 impl Closer for FileWriter with fn close(self : FileWriter) -> Unit {
-  let FileWriter(f) = self
-  f.close()
+  self.file.close()
 }
 
 // ---------------------------------------------------------------------------
@@ -217,7 +233,7 @@ pub fn PartHeaders::is_empty(self : PartHeaders) -> Bool {
 /// remaining bytes after the boundary are recoverable via
 /// `take_remaining()`.
 pub(all) struct Part {
-  source : &@io.Reader
+  source : &@io.BinaryReader
   delimiter : Bytes // "--boundary"
   headers : PartHeaders
   mut buf : @buffer.Buffer // unprocessed data (initial + new chunks)
@@ -250,7 +266,7 @@ pub fn Part::form_name(self : Part) -> (String, String?) {
 /// source is exhausted.
 async fn Part::read_chunk(
   self : Part,
-  max_len? : Int = stream_chunk_size,
+  max_len~ : Int32 = stream_chunk_size,
 ) -> Bytes? {
   guard self.body_eof is false else { return None }
 
@@ -297,7 +313,7 @@ async fn Part::read_chunk(
         Some(chunk)
       } else {
         // Not enough data — read more from source
-        match self.source.read_some(max_len~) {
+        match self.source.read() {
           Some(chunk) => {
             self.buf.write_bytes(chunk)
             // Recurse via re-calling with the updated buffer
@@ -325,7 +341,7 @@ async fn Part::read_chunk(
 /// Internal helper: retry boundary scan after reading more data.
 fn Part::read_chunk_retry(
   self : Part,
-  max_len? : Int = stream_chunk_size,
+  max_len~ : Int32 = stream_chunk_size,
 ) -> Bytes? {
   ignore(max_len)
   let data = self.buf.to_bytes()
@@ -413,7 +429,7 @@ enum FileBackend {
 pub async fn FileHeader::bytes(self : FileHeader) -> Bytes {
   match self.backend {
     Memory(b) => b
-    Disk(path) => @fs.read_file(path).binary()
+    Disk(path) => @fs.read_binary(path)
     External => b""
   }
 }
@@ -436,7 +452,7 @@ pub fn FileHeader::path(self : FileHeader) -> String? {
 pub async fn FileHeader::open(self : FileHeader) -> @io.MemoryReader {
   let data = match self.backend {
     Memory(b) => b
-    Disk(path) => @fs.read_file(path).binary()
+    Disk(path) => @fs.read_binary(path)
     External => b""
   }
   @io.MemoryReader() <| w => { w.write(data) }
@@ -633,8 +649,8 @@ fn unquote_mime_value(raw : String) -> String {
 
 ///|
 /// Generate a random hex string of `n` digits.
-fn random_hex(n : Int) -> String {
-  let r = @random.Rand::new()
+fn random_hex(n : Int32) -> String {
+  let r = @random.Rand()
   let hex = "0123456789abcdef"
   let buf = @buffer.Buffer::Buffer()
   for _ in 0..<n {
@@ -653,7 +669,7 @@ fn random_hex(n : Int) -> String {
 
 ///|
 /// Chunk size for streaming reads (8 KiB).
-let stream_chunk_size : Int = 8192
+let stream_chunk_size : Int32 = 8192
 
 ///|
 /// Streaming multipart reader — yields `Part` values one at a time.
@@ -662,7 +678,7 @@ let stream_chunk_size : Int = 8192
 /// `store_remaining` so the reader can find the next boundary line
 /// and part headers.
 priv struct MultipartReader {
-  source : &@io.Reader
+  source : &@io.BinaryReader
   delimiter : Bytes // "--boundary"
   final_delimiter : Bytes // "--boundary--"
   mut initial_buf : @buffer.Buffer // carry-over bytes from previous part
@@ -672,7 +688,7 @@ priv struct MultipartReader {
 
 ///|
 fn MultipartReader::new(
-  source : &@io.Reader,
+  source : &@io.BinaryReader,
   boundary : String,
 ) -> MultipartReader {
   let delim = b"--" + @utf8.encode(boundary)
@@ -726,7 +742,7 @@ async fn MultipartReader::next_part(self : MultipartReader) -> Part? {
             new_buf.write_bytes(data[data.length() - keep:].to_owned())
             scan_buf = new_buf
           }
-          match self.source.read_some(max_len=stream_chunk_size) {
+          match self.source.read() {
             Some(chunk) => scan_buf.write_bytes(chunk)
             None => return None
           }
@@ -782,7 +798,7 @@ async fn MultipartReader::next_part(self : MultipartReader) -> Part? {
       }
       break
     }
-    match self.source.read_some(max_len=stream_chunk_size) {
+    match self.source.read() {
       Some(chunk) => scan_buf.write_bytes(chunk)
       None => raise MultipartError::MalformedBody("incomplete headers")
     }
@@ -810,7 +826,7 @@ async fn MultipartReader::read_form(
   self : MultipartReader,
   max_memory : Int64,
   temp_dir : String,
-  writers? : Map[String, FileWriter] = Map([]),
+  writers~ : Map[String, FileWriter] = Map([]),
 ) -> MultipartForm {
   let form = MultipartForm::new()
   while true {
@@ -828,7 +844,7 @@ async fn MultipartReader::read_form(
                   match part.read_chunk() {
                     Some(chunk) => {
                       total = total + chunk.length().to_int64()
-                      @io.Writer::write(writer, chunk)
+                      @io.BinaryWriter::write(writer, chunk)
                     }
                     None => break
                   }
@@ -848,7 +864,7 @@ async fn MultipartReader::read_form(
                 let bodyWriter = BodyWriter::new(max_memory, temp_dir)
                 while true {
                   match part.read_chunk() {
-                    Some(chunk) => @io.Writer::write(bodyWriter, chunk)
+                    Some(chunk) => @io.BinaryWriter::write(bodyWriter, chunk)
                     None => break
                   }
                 }
@@ -938,7 +954,7 @@ async fn MultipartReader::skip_boundary_line(
       }
     }
     // Not enough data — read more.
-    match self.source.read_some(max_len=stream_chunk_size) {
+    match self.source.read() {
       Some(chunk) => scan_buf.write_bytes(chunk)
       None => raise MultipartError::MalformedBody("incomplete boundary line")
     }
@@ -952,6 +968,7 @@ async fn MultipartReader::skip_boundary_line(
 /// Implements `WriterCloser` so it can be used both as default writer
 /// and as a custom writer target.
 priv struct BodyWriter {
+  controller : @io.BinaryWriterController
   mut buf : @buffer.Buffer
   mut total : Int64
   mut disk_path : String
@@ -963,6 +980,7 @@ priv struct BodyWriter {
 ///|
 fn BodyWriter::new(max_memory : Int64, temp_dir : String) -> BodyWriter {
   {
+    controller: @io.BinaryWriterController::BinaryWriterController(),
     buf: @buffer.Buffer::Buffer(),
     total: 0,
     disk_path: "",
@@ -973,14 +991,19 @@ fn BodyWriter::new(max_memory : Int64, temp_dir : String) -> BodyWriter {
 }
 
 ///|
-/// Implement `@io.Writer` via `write_once`. The default `write(&Data)`
-/// converts to bytes inside the @io package and calls back to us here.
-impl @io.Writer for BodyWriter with fn write_once(
+
+///|
+impl @io.BinaryWriterImpl for BodyWriter with fn get_controller(self) {
+  self.controller
+}
+
+///|
+impl @io.BinaryWriterImpl for BodyWriter with fn raw_write_impl(
   self : BodyWriter,
   data : Bytes,
-  offset~ : Int,
-  len~ : Int,
-) -> Int {
+  offset~ : Int32,
+  len~ : Int32,
+) -> Int32 {
   let chunk = data[offset:offset + len].to_owned()
   let inc = chunk.length().to_int64()
   self.total = self.total + inc
@@ -996,12 +1019,12 @@ impl @io.Writer for BodyWriter with fn write_once(
           }
         },
       )
-      self.disk_file.unwrap().write(self.buf.to_bytes()[:]) |> ignore
+      self.disk_file.unwrap().write(self.buf.to_bytes()[:])
       self.buf = @buffer.Buffer::Buffer()
       self.disk_path = path
     }
     match self.disk_file {
-      Some(f) => f.write(chunk[:]) |> ignore
+      Some(f) => f.write(chunk[:])
       _ => ()
     }
   } else {
@@ -1009,6 +1032,9 @@ impl @io.Writer for BodyWriter with fn write_once(
   }
   len
 }
+
+///|
+impl @io.BinaryWriter for BodyWriter
 
 ///|
 /// Close the underlying file handle, if any.

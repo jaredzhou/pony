@@ -1,69 +1,70 @@
 ///|
+#derive(Debug, ToJson)
 pub(all) struct ApiError {
-  code : Int
+  code : Int32
   message : String
   details : Array[Map[String, String]]?
-} derive(Debug, ToJson)
+}
 
 ///|
 pub extend ApiError with @debug.Debug::{to_repr}
 
 ///|
-pub extend ApiError with ToJson::{to_json}
+pub extend ApiError with @json.ToJson::{to_json}
 
 ///|
-pub let ok : Int = 0
+pub let ok : Int32 = 0
 
 ///|
-pub let cancelled : Int = 1
+pub let cancelled : Int32 = 1
 
 ///|
-pub let unknown : Int = 2
+pub let unknown : Int32 = 2
 
 ///|
-pub let invalid_argument : Int = 3
+pub let invalid_argument : Int32 = 3
 
 ///|
-pub let deadline_exceeded : Int = 4
+pub let deadline_exceeded : Int32 = 4
 
 ///|
-pub let not_found : Int = 5
+pub let not_found : Int32 = 5
 
 ///|
-pub let already_exists : Int = 6
+pub let already_exists : Int32 = 6
 
 ///|
-pub let permission_denied : Int = 7
+pub let permission_denied : Int32 = 7
 
 ///|
-pub let resource_exhausted : Int = 8
+pub let resource_exhausted : Int32 = 8
 
 ///|
-pub let failed_precondition : Int = 9
+pub let failed_precondition : Int32 = 9
 
 ///|
-pub let aborted : Int = 10
+pub let aborted : Int32 = 10
 
 ///|
-pub let out_of_range : Int = 11
+pub let out_of_range : Int32 = 11
 
 ///|
-pub let unimplemented : Int = 12
+pub let unimplemented : Int32 = 12
 
 ///|
-pub let internal : Int = 13
+pub let internal : Int32 = 13
 
 ///|
-pub let unavailable : Int = 14
+pub let unavailable : Int32 = 14
 
 ///|
-pub let data_loss : Int = 15
+pub let data_loss : Int32 = 15
 
 ///|
-pub let unauthenticated : Int = 16
+pub let unauthenticated : Int32 = 16
 
 ///|
-pub fn ApiError::new(code : Int, message : String) -> ApiError {
+pub fn ApiError::new(code : Int32, message : String) -> ApiError {
   { code, message, details: None, }
 }
 
@@ -152,7 +153,7 @@ pub fn ApiError::unauthenticated(msg : String) -> ApiError {
 }
 
 ///|
-let codes : Map[Int, Int] = Map([])
+let codes : Map[Int32, Int32] = Map([])
 
 ///|
 fn init {
@@ -176,7 +177,7 @@ fn init {
 }
 
 ///|
-pub fn ApiError::to_http_status(code : Int) -> Int {
+pub fn ApiError::to_http_status(code : Int32) -> Int32 {
   match codes.get(code) {
     Some(status) => status
     None => 500
@@ -184,7 +185,7 @@ pub fn ApiError::to_http_status(code : Int) -> Int {
 }
 
 ///|
-pub fn register(code : Int, http_status : Int) -> Unit {
+pub fn register(code : Int32, http_status : Int32) -> Unit {
   codes[code] = http_status
 }
 

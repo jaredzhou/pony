@@ -112,7 +112,7 @@ Raising versions are generic over the `@pony.FromStr` trait — annotate the tar
 
 ```moonbit nocheck
 ///|
-let id : Int = ctx.param("id") catch {
+let id : Int32 = ctx.param("id") catch {
   e => {
     ctx.reply_error(e)
     return
@@ -128,14 +128,14 @@ let token : String = ctx.header("Authorization") catch {
 }
 
 ///|
-let page : Int = ctx.query("page") catch { _ => 1 }
+let page : Int32 = ctx.query("page") catch { _ => 1 }
 ```
 
 Built-in `FromStr` impls: `String` (identity), `Int`, `Int64`, `UInt`, `UInt64`, `Double`, `Bool`. Implement it for your own types to use them with the typed accessors:
 
 ```moonbit nocheck
 ///|
-struct UserId(Int)
+struct UserId(Int32)
 
 ///|
 pub impl @pony.FromStr for UserId with fn from_str(s) {
@@ -163,10 +163,11 @@ let name = ctx.try_form("name").unwrap_or("")
 
 ```moonbit nocheck
 ///|
+#derive(FromJson)
 struct LoginReq {
   username : String
   password : String
-} derive(FromJson)
+}
 
 ///|
 let req : LoginReq = ctx.json() catch {

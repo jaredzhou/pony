@@ -128,46 +128,46 @@ async test "test_pony" {
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
 
-    let (resp, body) = @http.get(base + "/ping")
+    let (resp, body) = @http.get_text(base + "/ping")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "pong")
+    assert_eq(body, "pong")
 
-    let (resp, body) = @http.get(base + "/pingall")
+    let (resp, body) = @http.get_text(base + "/pingall")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "pong all")
+    assert_eq(body, "pong all")
 
-    let (resp, body) = @http.get(base + "/ping/42")
+    let (resp, body) = @http.get_text(base + "/ping/42")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "pong 42")
+    assert_eq(body, "pong 42")
 
-    let (resp, body) = @http.get(base + "/admin/anything/here")
+    let (resp, body) = @http.get_text(base + "/admin/anything/here")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "caughtall")
+    assert_eq(body, "caughtall")
 
     // not found
-    let (resp, body) = @http.get(base + "/nope")
+    let (resp, body) = @http.get_text(base + "/nope")
     assert_eq(resp.code, 404)
-    assert_eq(body.text(), "custom 404")
+    assert_eq(body, "custom 404")
 
     // method not allowed — path exists but wrong method
-    let (resp, body) = @http.post(base + "/ping", b"")
+    let (resp, body) = @http.post_text(base + "/ping", "")
     assert_eq(resp.code, 405)
-    assert_eq(body.text(), "custom 405")
+    assert_eq(body, "custom 405")
 
     // mounted sub-router
-    let (resp, body) = @http.get(base + "/api/hi")
+    let (resp, body) = @http.get_text(base + "/api/hi")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "hello from sub")
+    assert_eq(body, "hello from sub")
 
     // query parameter
-    let (resp, body) = @http.get(base + "/echo?name=moonbit")
+    let (resp, body) = @http.get_text(base + "/echo?name=moonbit")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "hello moonbit")
+    assert_eq(body, "hello moonbit")
 
     // POST form data
-    let (resp, body) = @http.post(base + "/login", "user=pony&pass=1234")
+    let (resp, body) = @http.post_text(base + "/login", "user=pony&pass=1234")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "welcome pony")
+    assert_eq(body, "welcome pony")
   }
 }
 
@@ -300,42 +300,42 @@ async test "test_query" {
     @async.sleep(500)
 
     // key with value, no flag
-    let (resp, body) = @http.get(base + "/search?q=pony")
+    let (resp, body) = @http.get_text(base + "/search?q=pony")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "q=pony page=1 has_flag=false flag_val=none tags=[]")
+    assert_eq(body, "q=pony page=1 has_flag=false flag_val=none tags=[]")
 
     // key without value (flag is present, value is empty string)
-    let (resp, body) = @http.get(base + "/search?q=pony&flag")
+    let (resp, body) = @http.get_text(base + "/search?q=pony&flag")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "q=pony page=1 has_flag=true flag_val= tags=[]")
+    assert_eq(body, "q=pony page=1 has_flag=true flag_val= tags=[]")
 
     // same key multiple values
-    let (resp, body) = @http.get(
+    let (resp, body) = @http.get_text(
       base + "/search?tag=web&tag=framework&tag=fast",
     )
     assert_eq(resp.code, 200)
     assert_eq(
-      body.text(),
-      "q= page=1 has_flag=false flag_val=none tags=[web, framework, fast]",
+      body, "q= page=1 has_flag=false flag_val=none tags=[web, framework, fast]",
     )
 
     // mixed: multi-value + key-without-value
-    let (resp, body) = @http.get(base + "/search?tag=rust&flag&tag=go")
+    let (resp, body) = @http.get_text(base + "/search?tag=rust&flag&tag=go")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "q= page=1 has_flag=true flag_val= tags=[rust, go]")
+    assert_eq(body, "q= page=1 has_flag=true flag_val= tags=[rust, go]")
 
     // no query at all
-    let (resp, body) = @http.get(base + "/search")
+    let (resp, body) = @http.get_text(base + "/search")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "q= page=1 has_flag=false flag_val=none tags=[]")
+    assert_eq(body, "q= page=1 has_flag=false flag_val=none tags=[]")
   }
 }
 
 ///|
+#derive(FromJson, ToJson, Eq)
 struct User {
   name : String
-  age : Int
-} derive(FromJson, ToJson, Eq)
+  age : Int32
+}
 
 ///|
 /// JSON body deserialization via ctx.json() with a custom struct.
@@ -364,12 +364,12 @@ async test "test_json" {
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
 
-    let (resp, body) = @http.post(
+    let (resp, body) = @http.post_text(
       base + "/user",
       "{\"name\":\"alice\",\"age\":30}",
     )
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "alice is 30")
+    assert_eq(body, "alice is 30")
   }
 }
 
@@ -408,7 +408,7 @@ async test "test_write" {
     @async.sleep(500)
 
     // write_bytes + set_content_type
-    let (resp, _body) = @http.get(base + "/bytes")
+    let (resp, _body) = @http.get_text(base + "/bytes")
     assert_eq(resp.code, 200)
     assert_eq(
       resp.headers.get("content-type").unwrap_or(""),
@@ -416,11 +416,11 @@ async test "test_write" {
     )
 
     // no_content
-    let (resp, _) = @http.post(base + "/done", b"")
+    let (resp, _) = @http.post_text(base + "/done", "")
     assert_eq(resp.code, 204)
 
     // redirect
-    let (resp, _) = @http.get(base + "/go")
+    let (resp, _) = @http.get_text(base + "/go")
     assert_eq(resp.code, 302)
     assert_eq(resp.headers.get("location").unwrap_or(""), "/ping")
   }
@@ -457,19 +457,19 @@ async test "test_mount" {
     @async.sleep(500)
 
     // mounted GET
-    let (resp, body) = @http.get(base + "/v1/hi")
+    let (resp, body) = @http.get_text(base + "/v1/hi")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "hi")
+    assert_eq(body, "hi")
 
     // not found inside sub
-    let (resp, body) = @http.get(base + "/v1/nope")
+    let (resp, body) = @http.get_text(base + "/v1/nope")
     assert_eq(resp.code, 404)
-    assert_eq(body.text(), "sub 404")
+    assert_eq(body, "sub 404")
 
     // method not allowed inside sub
-    let (resp, body) = @http.post(base + "/v1/hi", b"")
+    let (resp, body) = @http.post_text(base + "/v1/hi", "")
     assert_eq(resp.code, 405)
-    assert_eq(body.text(), "sub 405")
+    assert_eq(body, "sub 405")
   }
 }
 
@@ -499,7 +499,7 @@ async test "test_jwt" {
       let server = @http.Server::Server(
         @socket.Addr::parse("127.0.0.1:\{port}"),
       )
-      server.run_forever((req, req_body, conn) => r.handle(req, req_body, conn))
+      server.run_forever((req, conn) => r.handle(req, conn, conn))
     }
     let base = "http://127.0.0.1:\{port}"
     @async.sleep(500)
@@ -507,21 +507,21 @@ async test "test_jwt" {
     let token_str = @jwt.sign(@jwt.new_hmac_sha256(b"secret"), {
       "sub": "alice",
     })
-    let (resp, body) = @http.get(base + "/me", headers={
+    let (resp, body) = @http.get_text(base + "/me", headers={
       "Authorization": "Bearer \{token_str}",
     })
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "user=alice")
+    assert_eq(body, "user=alice")
 
     // no token
-    let (resp, body) = @http.get(base + "/me")
+    let (resp, body) = @http.get_text(base + "/me")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "user=anonymous")
+    assert_eq(body, "user=anonymous")
 
     // // no token
-    // let (resp, body) = @http.get(base + "/me")
+    // let (resp, body) = @http.get_text(base + "/me")
     // assert_eq(resp.code, 200)
-    // assert_eq(body.text(), "anonymous")
+    // assert_eq(body, "anonymous")
   }
 }
 
@@ -545,9 +545,9 @@ async test "test_server" {
     group.spawn_bg(no_wait=true, allow_failure=true) <| () => { s.start() }
     @async.sleep(500)
 
-    let (resp, body) = @http.get("http://127.0.0.1:19881/hello")
+    let (resp, body) = @http.get_text("http://127.0.0.1:19881/hello")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "req=1")
+    assert_eq(body, "req=1")
   }
 }
 
@@ -641,11 +641,11 @@ async test "test_multipart_upload" {
       ("username", None, "alice"),
       ("avatar", Some("photo.png"), "binarydata"),
     ])
-    let (resp, body) = @http.post(base + "/upload", body, headers={
+    let (resp, resp_body) = @http.post_binary(base + "/upload", body, headers={
       "Content-Type": "multipart/form-data; boundary=\{boundary}",
     })
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "photo.png/10/alice/memory")
+    assert_eq(@utf8.decode(resp_body), "photo.png/10/alice/memory")
   }
 }
 
@@ -677,7 +677,7 @@ async test "test_multipart_upload_disk_spill" {
           @fs.remove(save_path) catch {
             _ => ()
           }
-          @fs.write_file(save_path, data, create_mode=CreateNew)
+          @fs.write_binary(save_path, data, create_mode=CreateNew)
           ctx.write_text(
             200,
             "\{file.filename}/\{file.size}/\{disk_path}/\{username}/\{save_path}",
@@ -722,16 +722,16 @@ async test "test_multipart_upload_disk_spill" {
     buf.write_string_utf8("--\{boundary}--\r\n")
     let body = buf.to_bytes()
 
-    let (resp, resp_body) = @http.post(base + "/upload-spill", body, headers={
+    let (resp, resp_body) = @http.post_binary(base + "/upload-spill", body, headers={
       "Content-Type": "multipart/form-data; boundary=\{boundary}",
     })
     assert_eq(resp.code, 200)
-    let text = resp_body.text()
+    let text = @utf8.decode(resp_body)
     assert_eq(text.contains("/pony-multipart-"), true)
     assert_eq(text.has_prefix("test.jpg/\{image_size}/"), true)
     assert_eq(text.contains("/alice/"), true)
     // Verify the saved file exists and matches the original image.
-    let saved_data = @fs.read_file("data/test.jpg").binary()
+    let saved_data = @fs.read_binary("data/test.jpg")
     assert_eq(saved_data, image_bytes)
   }
 }
@@ -759,7 +759,9 @@ async test "test_multipart_upload_custom_writer" {
           return
         }
       }
-      let _ = ctx.parse_multipart_form(writers={ "avatar": FileWriter(file) }) catch {
+      let _ = ctx.parse_multipart_form(writers={
+        "avatar": @pony.FileWriter(file),
+      }) catch {
         _ => {
           ctx.write_text(400, "bad form")
           return
@@ -806,15 +808,15 @@ async test "test_multipart_upload_custom_writer" {
     buf.write_string_utf8("--\{boundary}--\r\n")
     let body = buf.to_bytes()
 
-    let (resp, resp_body) = @http.post(base + "/upload-writer", body, headers={
+    let (resp, resp_body) = @http.post_binary(base + "/upload-writer", body, headers={
       "Content-Type": "multipart/form-data; boundary=\{boundary}",
     })
     assert_eq(resp.code, 200)
     // path() returns "none" — FileWriter streams directly, backend is External
-    assert_eq(resp_body.text(), "custom.jpg/\{image_size}/none")
+    assert_eq(@utf8.decode(resp_body), "custom.jpg/\{image_size}/none")
 
     // The file was written directly by FileWriter, not through a temp file.
-    let saved_data = @fs.read_file(target).binary()
+    let saved_data = @fs.read_binary(target)
     assert_eq(saved_data, image_bytes)
     @fs.remove(target) catch {
       _ => ()
@@ -825,7 +827,7 @@ async test "test_multipart_upload_custom_writer" {
 ///|
 /// Local type used to exercise a user-defined FromStr impl
 /// (trait is foreign, type is local — allowed by coherence rules).
-struct ItemId(Int)
+struct ItemId(Int32)
 
 ///|
 impl @pony.FromStr for ItemId with fn from_str(s) {
@@ -833,7 +835,7 @@ impl @pony.FromStr for ItemId with fn from_str(s) {
 }
 
 ///|
-/// Typed accessors: param/query/header parsed via FromStr,
+/// Typed accessors: param/query/header parsed via @pony.FromStr,
 /// parse failure -> InvalidValue -> HTTP 400, custom impl.
 async test "test_typed_accessors" {
   let r = @pony.Router::Router()
@@ -841,7 +843,7 @@ async test "test_typed_accessors" {
     @pony.HttpMethod::Get,
     "/item/{id}",
     ctx => {
-      let id : Int = ctx.param("id") catch {
+      let id : Int32 = ctx.param("id") catch {
         e => {
           ctx.reply_error(e)
           return
@@ -855,7 +857,7 @@ async test "test_typed_accessors" {
     @pony.HttpMethod::Get,
     "/typed",
     ctx => {
-      let page : Int = ctx.query("page") catch { _ => 1 }
+      let page : Int32 = ctx.query("page") catch { _ => 1 }
       let dbg : Bool = ctx.query("debug") catch { _ => false }
       let ver : Double = ctx.header("x-api-version") catch { _ => 0.0 }
       ctx.write_text(200, "page=\{page} debug=\{dbg} ver=\{ver}")
@@ -887,25 +889,25 @@ async test "test_typed_accessors" {
     @async.sleep(500)
 
     // Int param parses
-    let (resp, body) = @http.get(base + "/item/42")
+    let (resp, body) = @http.get_text(base + "/item/42")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "item #42")
+    assert_eq(body, "item #42")
 
     // unparsable param -> InvalidValue -> 400
-    let (resp, body) = @http.get(base + "/item/abc")
+    let (resp, body) = @http.get_text(base + "/item/abc")
     assert_eq(resp.code, 400)
-    assert_true(body.text().contains("invalid value for id: abc"))
+    assert_true(body.contains("invalid value for id: abc"))
 
     // typed query + typed header
-    let (resp, body) = @http.get(base + "/typed?page=3&debug=true", headers={
+    let (resp, body) = @http.get_text(base + "/typed?page=3&debug=true", headers={
       "x-api-version": "1.5",
     })
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "page=3 debug=true ver=1.5")
+    assert_eq(body, "page=3 debug=true ver=1.5")
 
     // user-defined FromStr impl
-    let (resp, body) = @http.get(base + "/item2/7")
+    let (resp, body) = @http.get_text(base + "/item2/7")
     assert_eq(resp.code, 200)
-    assert_eq(body.text(), "item2 #7")
+    assert_eq(body, "item2 #7")
   }
 }

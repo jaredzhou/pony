@@ -7,7 +7,7 @@ import {
 }
 
 // Values
-pub fn cors(allow_origins? : Array[String], allow_methods? : Array[String], allow_headers? : Array[String], max_age? : Int) -> @pony.Middleware
+pub fn cors(allow_origins? : Array[String], allow_methods? : Array[String], allow_headers? : Array[String], max_age? : Int32) -> @pony.Middleware
 
 pub fn jwt(@jwt.SigningMethod) -> @pony.Middleware
 

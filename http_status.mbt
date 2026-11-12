@@ -182,7 +182,7 @@ pub let status_not_extended = 510
 pub let status_network_authentication_required = 511
 
 ///|
-pub fn status_text(code : Int) -> String {
+pub fn status_text(code : Int32) -> String {
   match code {
     100 => "Continue"
     101 => "Switching Protocols"

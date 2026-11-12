@@ -5,7 +5,7 @@
 /// `Context::form`, so callers pick the target type at the call site:
 ///
 /// ```mbt nocheck
-/// let id : Int = ctx.param("id") // parse failure -> InvalidValue (400)
+/// let id : Int32 = ctx.param("id") // parse failure -> InvalidValue (400)
 ///
 /// let name : String = ctx.param("name") // identity, never fails
 /// ```
@@ -23,7 +23,7 @@
 /// # Example
 /// ```mbt check
 /// test {
-///   let n : Int = @pony.FromStr::from_str("42") catch { _ => -1 }
+///   let n : Int32 = @pony.FromStr::from_str("42") catch { _ => -1 }
 ///   inspect(n, content="42")
 ///   let b : Bool = @pony.FromStr::from_str("true") catch { _ => false }
 ///   inspect(b, content="true")
@@ -39,7 +39,7 @@ pub impl FromStr for String with fn from_str(s) {
 }
 
 ///|
-pub impl FromStr for Int with fn from_str(s) {
+pub impl FromStr for Int32 with fn from_str(s) {
   @string.from_str(s)
 }
 
@@ -49,7 +49,7 @@ pub impl FromStr for Int64 with fn from_str(s) {
 }
 
 ///|
-pub impl FromStr for UInt with fn from_str(s) {
+pub impl FromStr for UInt32 with fn from_str(s) {
   @string.from_str(s)
 }
 

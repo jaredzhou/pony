@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 enum NodeType {
   // Static(prefix)
   Static(String)
@@ -6,7 +7,7 @@ enum NodeType {
   Param(String, Char)
   // Wildcard is always * and at the end of the pattern
   Wildcard
-} derive(Debug)
+}
 
 ///|
 pub extend NodeType with @debug.Debug::{to_repr}
@@ -33,12 +34,13 @@ pub impl Show for NodeType with fn to_string(self : NodeType) -> String {
 pub extend NodeType with Show::{to_string, output}
 
 ///|
+#derive(Debug)
 struct Endpoint {
   name : String
   handler : Handler
   pattern : String
   path_params : Array[String]
-} derive(Debug)
+}
 
 ///|
 pub extend Endpoint with @debug.Debug::{to_repr}
@@ -52,13 +54,14 @@ fn Endpoint::to_paramKV_array(
 }
 
 ///|
+#derive(Debug)
 struct Node {
   mut node_type : NodeType
   mut children_static : Array[Node]
   mut children_param : Array[Node]
   mut child_wildcard : Node?
   mut endpoints : Map[HttpMethod, Endpoint]
-} derive(Debug)
+}
 
 ///|
 pub extend Node with @debug.Debug::{to_repr}
@@ -131,7 +134,7 @@ fn Node::insert(
   self : Node,
   http_method : HttpMethod,
   pattern : String,
-  name? : String = "",
+  name~ : String = "",
   handler : Handler,
 ) -> Unit raise RouterError {
   let path_params : Array[String] = []
@@ -329,7 +332,7 @@ fn Node::route(self : Node, meth : HttpMethod, path : String) -> RouteResult {
 }
 
 ///|
-fn common_prefix_len(s1 : String, s2 : StringView) -> Int {
+fn common_prefix_len(s1 : String, s2 : StringView) -> Int32 {
   let len = if s1.length() < s2.length() { s1.length() } else { s2.length() }
   for i = 0; i < len; i = i + 1 {
     if s1.get_char(i) != s2.get_char(i) {
@@ -340,7 +343,7 @@ fn common_prefix_len(s1 : String, s2 : StringView) -> Int {
 }
 
 ///|
-fn Node::find_common_prefix(self : Node, str : StringView) -> (Node, Int)? {
+fn Node::find_common_prefix(self : Node, str : StringView) -> (Node, Int32)? {
   for child in self.children_static {
     if child.node_type is Static(prefix) {
       let common = common_prefix_len(prefix, str)
@@ -357,7 +360,7 @@ fn Node::set_endpoint(
   self : Node,
   http_method : HttpMethod,
   pattern : String,
-  name? : String = "",
+  name~ : String = "",
   handler : Handler,
   path_params : Array[String],
 ) -> Unit {

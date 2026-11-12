@@ -1,5 +1,6 @@
 ///|
-pub(all) struct Middleware((Handler) -> Handler) derive(Debug)
+#derive(Debug)
+pub(all) struct Middleware((Handler) -> Handler)
 
 ///|
 pub extend Middleware with @debug.Debug::{to_repr}

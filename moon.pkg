@@ -1,24 +1,34 @@
 import {
   "jaredzhou/libs/url",
   "moonbitlang/core/json",
-  "moonbitlang/async/http",
-  "moonbitlang/async/io",
-  "moonbitlang/async/socket",
-  "moonbitlang/async/fs",
+  "moonbitlang/core/async/http",
+  "moonbitlang/core/async/io",
+  "moonbitlang/core/async/socket",
+  "moonbitlang/core/async/fs",
   "moonbitlang/core/debug",
   "moonbitlang/core/random",
   "moonbitlang/core/buffer",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/string",
-  "tonyfettes/any",
+  "jaredzhou/pony/any",
 }
 
 import {
-  "moonbitlang/async",
+  "moonbitlang/core/async",
   "jaredzhou/libs/jwt",
   "jaredzhou/pony/mw",
 } for "test"
 
 import {
-  "moonbitlang/async",
+  "moonbitlang/core/async",
 } for "wbtest"
+
+options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/http",
+    "moonbitlang/core/async/io",
+    "moonbitlang/core/async/socket",
+    "moonbitlang/core/async/fs",
+  ],
+)

@@ -2,12 +2,12 @@
 /// CORS middleware. Adds Access-Control-* headers to every response.
 /// For OPTIONS preflight requests, responds 204 immediately.
 pub fn cors(
-  allow_origins? : Array[String] = ["*"],
-  allow_methods? : Array[String] = [
+  allow_origins~ : Array[String] = ["*"],
+  allow_methods~ : Array[String] = [
     "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS",
   ],
-  allow_headers? : Array[String] = ["Content-Type", "Authorization"],
-  max_age? : Int = 86400,
+  allow_headers~ : Array[String] = ["Content-Type", "Authorization"],
+  max_age~ : Int32 = 86400,
 ) -> @pony.Middleware {
   next => {
     ctx => {

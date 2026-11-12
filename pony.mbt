@@ -1,13 +1,14 @@
 ///|
+#derive(Debug, ToJson)
 pub suberror RouterError {
   InvalidPattern(http_method~ : String, path~ : String, reason~ : String)
-} derive(Debug, ToJson)
+}
 
 ///|
 pub extend RouterError with @debug.Debug::{to_repr}
 
 ///|
-pub extend RouterError with ToJson::{to_json}
+pub extend RouterError with @json.ToJson::{to_json}
 
 ///|
 pub impl Show for RouterError with fn to_string(self) {
@@ -27,6 +28,7 @@ pub extend RouterError with Show::{to_string, output}
 /// requested type. Business errors are not part of `PonyError` — construct
 /// an `ApiError` directly with one of its convenience constructors, e.g.
 /// `ApiError::not_found(msg)`.
+#derive(Debug, ToJson)
 pub(all) suberror PonyError {
   MissingParam(String)
   MissingQuery(String)
@@ -36,13 +38,13 @@ pub(all) suberror PonyError {
   ExtDecodeError(String, String)
   MissingFormFile(String)
   InvalidValue(String, String)
-} derive(Debug, ToJson)
+}
 
 ///|
 pub extend PonyError with @debug.Debug::{to_repr}
 
 ///|
-pub extend PonyError with ToJson::{to_json}
+pub extend PonyError with @json.ToJson::{to_json}
 
 ///|
 pub impl ToApiError for PonyError with fn to_api_error(self : PonyError) -> ApiError {
@@ -70,6 +72,7 @@ pub impl ToApiError for PonyError with fn to_api_error(self : PonyError) -> ApiE
 pub extend PonyError with ToApiError::{to_api_error}
 
 ///|
+#derive(Debug, Eq, Compare, Hash, ToJson)
 pub(all) enum HttpMethod {
   Get
   Head
@@ -81,7 +84,7 @@ pub(all) enum HttpMethod {
   Trace
   Patch
   Any // 匹配任意方法
-} derive(Debug, Eq, Compare, Hash, ToJson)
+}
 
 ///|
 pub extend HttpMethod with @debug.Debug::{to_repr}
@@ -96,7 +99,7 @@ pub extend HttpMethod with Compare::{op_lt, op_le, op_ge, compare, op_gt}
 pub extend HttpMethod with Hash::{hash, hash_combine}
 
 ///|
-pub extend HttpMethod with ToJson::{to_json}
+pub extend HttpMethod with @json.ToJson::{to_json}
 
 ///|
 pub impl Show for HttpMethod with fn output(self, logger) {
@@ -130,6 +133,7 @@ pub fn HttpMethod::from_std(meth : @http.RequestMethod) -> HttpMethod {
     @http.Options => HttpMethod::Options
     @http.Trace => HttpMethod::Trace
     @http.Patch => HttpMethod::Patch
+    @http.Extension(_) => HttpMethod::Any
   }
 }
 
@@ -227,7 +231,7 @@ pub(all) struct Context {
   mut multipart_form : MultipartForm?
   exts : ExtStore
   mut path_params : Array[ParamKV]
-  req_body : &@io.Reader
+  req_body : &@io.BinaryReader
   resp_writer : @http.ServerConnection
 }
 
@@ -240,7 +244,7 @@ pub fn ExtStore::new() -> ExtStore {
 }
 
 ///|
-fn ExtStore::find(self : ExtStore, key : String) -> Int? {
+fn ExtStore::find(self : ExtStore, key : String) -> Int32? {
   let ExtStore(arr) = self
   for i = 0; i < arr.length(); i = i + 1 {
     let (existing, _) = arr[i]
@@ -402,7 +406,7 @@ pub async fn Context::try_form(self : Context, key : String) -> String? {
   }
   // Fallback: application/x-www-form-urlencoded lazy parse.
   if self.form_values is None {
-    let body_text = self.req_body.read_all().text()
+    let body_text = @utf8.decode(self.req_body.read_all())
     self.form_values = Some(parse_query(body_text))
   }
   self.form_values.unwrap().get(key)
@@ -425,8 +429,8 @@ pub async fn[T : FromStr] Context::form(
 ///|
 pub async fn Context::parse_multipart_form(
   self : Context,
-  max_memory? : Int64 = default_max_memory,
-  writers? : Map[String, FileWriter] = Map([]),
+  max_memory~ : Int64 = default_max_memory,
+  writers~ : Map[String, FileWriter] = Map([]),
 ) -> Unit {
   let content_type = self.try_header("content-type").unwrap_or("")
   let boundary = boundary_from(content_type)
@@ -478,7 +482,7 @@ pub async fn Context::cleanup(self : Context) -> Unit {
 
 ///|
 pub async fn[T : FromJson] Context::json(self : Context) -> T {
-  @json.from_json(self.req_body.read_all().json())
+  @json.from_json(@json.parse(@utf8.decode(self.req_body.read_all())))
 }
 
 ///
@@ -529,14 +533,13 @@ async fn[T : ToJson] Context::reply(
   }
   let http_status_msg = status_text(http_status)
   self.resp_headers.merge_in_place({ "Content-Type": "application/json" })
-  self.resp_writer
-  ..send_response(
+  self.resp_writer.send_response(
     http_status,
     http_status_msg,
     extra_headers=self.resp_headers.to_map(),
   )
-  ..write(body)
-  .end_response()
+  self.resp_writer.text.write(body)
+  self.resp_writer.end_response()
 }
 
 ///|
@@ -555,7 +558,7 @@ pub async fn[T : ToApiError] Context::reply_error(
 ///|
 pub async fn Context::write_text(
   self : Context,
-  http_status : Int,
+  http_status : Int32,
   msg? : String,
   text : String,
 ) -> Unit {
@@ -569,14 +572,14 @@ pub async fn Context::write_text(
     msg,
     extra_headers=self.resp_headers.to_map(),
   )
-  self.resp_writer.write(text)
+  self.resp_writer.text.write(text)
   self.resp_writer.end_response()
 }
 
 ///|
 pub async fn[T : ToJson] Context::write_json(
   self : Context,
-  http_status : Int,
+  http_status : Int32,
   msg? : String,
   v : T,
 ) -> Unit {
@@ -586,10 +589,13 @@ pub async fn[T : ToJson] Context::write_json(
     None => status_text(http_status)
   }
   self.resp_headers.merge_in_place({ "Content-Type": "application/json" })
-  self.resp_writer
-  ..send_response(http_status, msg, extra_headers=self.resp_headers.to_map())
-  ..write(body)
-  .end_response()
+  self.resp_writer.send_response(
+    http_status,
+    msg,
+    extra_headers=self.resp_headers.to_map(),
+  )
+  self.resp_writer.text.write(body)
+  self.resp_writer.end_response()
 }
 
 ///|
@@ -600,7 +606,7 @@ pub fn Context::set_content_type(self : Context, ct : String) -> Unit {
 ///|
 pub async fn Context::write_bytes(
   self : Context,
-  http_status : Int,
+  http_status : Int32,
   msg? : String,
   body : Bytes,
 ) -> Unit {
@@ -632,7 +638,7 @@ pub async fn Context::no_content(self : Context) -> Unit {
 pub async fn Context::redirect(
   self : Context,
   url : String,
-  http_status? : Int = 302,
+  http_status~ : Int32 = 302,
   msg? : String,
 ) -> Unit {
   self.resp_headers.merge_in_place({ "Location": url })
@@ -679,7 +685,8 @@ pub extend Context with Show::{to_string, output}
 ///|
 
 ///|
-pub(all) struct Handler(async (Context) -> Unit) derive(Debug)
+#derive(Debug)
+pub(all) struct Handler(async (Context) -> Unit)
 
 ///|
 pub extend Handler with @debug.Debug::{to_repr}
@@ -692,12 +699,13 @@ pub enum RouteResult {
 }
 
 ///|
+#derive(Debug)
 pub struct Router {
   tree : Node
   middlewares : Array[Middleware]
   mut not_found_handler : Handler?
   mut method_not_allowed_handler : Handler?
-} derive(Debug)
+}
 
 ///|
 pub extend Router with @debug.Debug::{to_repr}
@@ -769,8 +777,8 @@ pub fn Router::add(
   self : Router,
   meth : HttpMethod,
   pattern : String,
-  name? : String = "",
-  mws? : Array[Middleware] = [],
+  name~ : String = "",
+  mws~ : Array[Middleware] = [],
   handler : Handler,
 ) -> Unit raise RouterError {
   guard pattern.has_prefix("/") else {
@@ -787,8 +795,8 @@ pub fn Router::add(
 pub fn Router::any(
   self : Router,
   pattern : String,
-  name? : String = "",
-  mws? : Array[Middleware] = [],
+  name~ : String = "",
+  mws~ : Array[Middleware] = [],
   handler : Handler,
 ) -> Unit raise RouterError {
   self.add(HttpMethod::Any, pattern, name~, mws~, handler)
@@ -814,9 +822,9 @@ pub fn Router::mount(
 pub struct Server {
   router : Router
   addr : String
-  read_timeout : Int?
-  write_timeout : Int?
-  mut request_id : Int
+  read_timeout : Int32?
+  write_timeout : Int32?
+  mut request_id : Int32
 }
 
 ///|
@@ -825,15 +833,19 @@ pub fn Server::Server(addr : String, router : Router) -> Server {
 }
 
 ///|
-pub fn Server::with_timeout(self : Server, read? : Int, write? : Int) -> Server {
+pub fn Server::with_timeout(
+  self : Server,
+  read? : Int32,
+  write? : Int32,
+) -> Server {
   { ..self, read_timeout: read, write_timeout: write, }
 }
 
 ///|
 pub async fn Server::start(self : Server) -> Unit {
   let server = @http.Server::Server(@socket.Addr::parse(self.addr))
-  server.run_forever((req, req_body, resp_writer) => {
-    let ctx = self.router.build_ctx(req, req_body, resp_writer)
+  server.run_forever((req, conn) => {
+    let ctx = self.router.build_ctx(req, conn, conn)
     self.request_id += 1
     ctx.set_ext(RequestId::{ }, self.request_id.to_string())
     self.router.handler(ctx)
@@ -874,8 +886,8 @@ fn parse_query(q : String) -> Values {
 ///|
 pub fn Router::build_ctx(
   _self : Router,
-  req : @http.Request,
-  req_body : &@io.Reader,
+  req : @http.RequestHeader,
+  req_body : &@io.BinaryReader,
   resp_writer : @http.ServerConnection,
 ) -> Context {
   let url = @url.parse_request_uri(req.path) catch {
@@ -926,8 +938,8 @@ pub async fn Router::handler(self : Router, ctx : Context) -> Unit {
 ///|
 pub async fn Router::handle(
   self : Router,
-  req : @http.Request,
-  req_body : &@io.Reader,
+  req : @http.RequestHeader,
+  req_body : &@io.BinaryReader,
   resp_writer : @http.ServerConnection,
 ) -> Unit {
   let ctx = self.build_ctx(req, req_body, resp_writer)

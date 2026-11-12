@@ -289,6 +289,6 @@ async test "MultipartReader returns None after final boundary" {
 
 ///|
 async test "readutil test" {
-  let reader = @io.MemoryReader() <| w => { w.write("\r\n") }
-  @debug.assert_eq(reader.read_until("\r\n"), Some(""))
+  let reader = @io.MemoryReader() <| w => { w.write(b"\r\n") }
+  @debug.assert_eq(reader.read_until(b"\r\n"), Some(b""))
 }
